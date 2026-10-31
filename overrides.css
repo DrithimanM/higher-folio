@@ -18,6 +18,7 @@
 .payer-address { white-space: pre-line; }
 .invoice-meta #paymentMeta { margin-top: 16px; }
 .invoice-meta #paymentMeta span { display: block; margin-bottom: 4px; }
+.seller #businessLicense { color: #53615e; font-size: 10px; font-weight: 650; }
 
 .copy-message { color: var(--muted); text-align: center; font-size: 12px; }
 .mobile-action-bar { display: none; }

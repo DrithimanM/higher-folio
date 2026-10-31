@@ -89,9 +89,15 @@ async function copyMessage() {
   try { await navigator.clipboard.writeText(text); saveState('Message copied — paste it into Instagram or WhatsApp'); }
   catch { saveState('Your message is ready to copy from the preview'); }
 }
+function applyBusinessProfile(profile) {
+  $('businessName').textContent = profile.name || 'My Business';
+  $('businessContact').textContent = [profile.contact, profile.instagram].filter(Boolean).join(' · ') || 'Thank you for your business';
+  $('businessLicense').hidden = !profile.tradeLicense;
+  $('businessLicense').textContent = profile.tradeLicense ? `Trade licence no. ${profile.tradeLicense}` : '';
+}
 function setupBusiness() {
   const profile = JSON.parse(localStorage.getItem('simplyBillProfile') || 'null');
-  if (profile) { $('businessName').textContent = profile.name; $('businessContact').textContent = [profile.contact, profile.instagram].filter(Boolean).join(' · ') || 'Thank you for your business'; return; }
+  if (profile) { applyBusinessProfile(profile); return; }
   $('setupDialog').showModal();
 }
 function editBusiness() {
@@ -99,6 +105,7 @@ function editBusiness() {
   $('setupBusiness').value = profile.name || '';
   $('setupContact').value = profile.contact || '';
   $('setupInstagram').value = profile.instagram || '';
+  $('setupTradeLicense').value = profile.tradeLicense || '';
   $('setupDialog').showModal();
 }
 
@@ -114,5 +121,5 @@ $('copyMessageButton').addEventListener('click', copyMessage);
 $('newBillButton').addEventListener('click', () => { $('billForm').reset(); $('issueDate').value = today; $('additionalItems').innerHTML = ''; $('moreDetails').hidden = true; $('moreDetailsButton').setAttribute('aria-expanded', 'false'); currentInvoice = createInvoice(nextSequence); render(); $('customerName').focus(); });
 $('editBusinessButton').addEventListener('click', editBusiness);
 $('expandPreview').addEventListener('click', openPrint);
-$('saveSetup').addEventListener('click', () => { const name = $('setupBusiness').value.trim() || 'My Business'; const contact = $('setupContact').value.trim(); const instagram = $('setupInstagram').value.trim(); localStorage.setItem('simplyBillProfile', JSON.stringify({name, contact, instagram})); $('businessName').textContent = name; $('businessContact').textContent = [contact, instagram].filter(Boolean).join(' · ') || 'Thank you for your business'; $('setupDialog').close(); });
+$('saveSetup').addEventListener('click', () => { const name = $('setupBusiness').value.trim() || 'My Business'; const contact = $('setupContact').value.trim(); const instagram = $('setupInstagram').value.trim(); const tradeLicense = $('setupTradeLicense').value.trim(); const profile = {name, contact, instagram, tradeLicense}; localStorage.setItem('simplyBillProfile', JSON.stringify(profile)); applyBusinessProfile(profile); $('setupDialog').close(); });
 setupBusiness(); render();
