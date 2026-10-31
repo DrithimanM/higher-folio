@@ -56,7 +56,37 @@ function updateSavedInvoice() {
   localStorage.setItem(appKey, JSON.stringify(records.map(record => record.number === invoiceId() ? {...record, paymentStatus: $('paymentStatus').value, paymentVia: $('paymentVia').value} : record)));
 }
 
-function renderPaymentDetails(paid) {
+function makeUpiQr(total) {
+  if ($('currency').value !== 'INR' || !businessProfile.upiId || !window.HigherFolioQRCode) return '';
+  const payUrl = new URL('upi://pay');
+  payUrl.searchParams.set('pa', businessProfile.upiId);
+  payUrl.searchParams.set('pn', businessProfile.accountName || businessProfile.name || 'Business');
+  payUrl.searchParams.set('am', Number(total).toFixed(2));
+  payUrl.searchParams.set('cu', 'INR');
+  payUrl.searchParams.set('tn', `Bill ${invoiceId()}`);
+  try {
+    const qr = new window.HigherFolioQRCode(0, 0);
+    qr.addData(payUrl.toString());
+    qr.make();
+    const modules = qr.getModuleCount();
+    const padding = 4;
+    const size = modules + padding * 2;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size * 6;
+    const context = canvas.getContext('2d');
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = '#101713';
+    for (let row = 0; row < modules; row += 1) {
+      for (let column = 0; column < modules; column += 1) {
+        if (qr.isDark(row, column)) context.fillRect((column + padding) * 6, (row + padding) * 6, 6, 6);
+      }
+    }
+    return canvas.toDataURL('image/png');
+  } catch { return ''; }
+}
+
+function renderPaymentDetails(paid, total) {
   const hasBankDetails = Boolean(businessProfile.bankName || businessProfile.accountName || businessProfile.accountNumber || businessProfile.upiId);
   const hasPaymentDetails = hasBankDetails || Boolean(businessProfile.upiQr);
   $('paymentDetails').hidden = paid || !hasPaymentDetails;
@@ -71,8 +101,12 @@ function renderPaymentDetails(paid) {
     $(id).hidden = !value;
     $(id).textContent = value ? `${label}${value}` : '';
   });
-  $('paymentQr').hidden = !businessProfile.upiQr;
-  $('paymentQrImage').src = businessProfile.upiQr || '';
+  const generatedQr = makeUpiQr(total);
+  const qr = generatedQr || businessProfile.upiQr || '';
+  $('paymentQr').hidden = !qr;
+  $('paymentQrImage').src = qr;
+  $('paymentQrImage').alt = generatedQr ? `UPI payment QR code for ₹${Number(total).toFixed(2)}` : 'Payment QR code';
+  $('paymentQr').querySelector('figcaption').textContent = generatedQr ? `Scan to pay ₹${Number(total).toFixed(2)} via UPI` : 'Scan to pay';
 }
 
 function render() {
@@ -102,7 +136,7 @@ function render() {
   $('grandTotalLabel').textContent = paid ? 'Total paid' : 'Total due';
   $('invoicePaymentStatus').textContent = paid ? 'Paid' : 'Payment due';
   $('invoicePaymentStatus').className = `invoice-payment-status ${paid ? 'is-paid' : 'is-due'}`;
-  renderPaymentDetails(paid);
+  renderPaymentDetails(paid, total);
   const note = $('notes').value.trim();
   $('previewNote').hidden = !note;
   $('previewNote').textContent = note;
