@@ -40,13 +40,16 @@
 .copy-message { color: var(--muted); text-align: center; font-size: 12px; }
 .mobile-action-bar { display: none; }
 .business-button { min-width: 116px; }
+.business-label-mobile { display: none; }
 
 @media (max-width: 700px) {
   body { padding-bottom: 82px; }
   .app-shell { padding-bottom: 22px; }
   .welcome-copy { font-size: 16px; }
   .workspace { gap: 18px; }
-  .business-button { display: none; }
+  .business-button { display: inline-flex; min-width: 78px; padding-right: 9px; padding-left: 9px; font-size: 12px; }
+  .business-label-desktop { display: none; }
+  .business-label-mobile { display: inline; }
   .editor { border-radius: 16px; }
   .preview-column { margin-top: 8px; }
   .preview-top { padding: 0 4px; }
