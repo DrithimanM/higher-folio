@@ -52,11 +52,15 @@
           <fieldset class="form-section compact-fields">
             <legend>Bill details</legend>
             <div class="two-column"><div><label for="currency">Currency</label><select id="currency" name="currency"><option value="AED">UAE Dirham</option><option value="INR">Indian Rupee</option></select></div><div><label for="issueDate">Date</label><input id="issueDate" name="issueDate" type="date" /></div></div>
-            <label for="paymentVia">Payment made via <span class="optional">optional</span></label>
-            <select id="paymentVia" name="paymentVia"><option value="">Not specified</option><option>Cash</option><option>Card</option><option>Bank transfer</option><option>UPI</option><option>Payment link</option><option>Other</option></select>
+            <label for="paymentStatus">Payment status</label>
+            <select id="paymentStatus" name="paymentStatus"><option value="due">Payment due</option><option value="paid">Paid</option></select>
+            <div id="paymentViaField" hidden><label for="paymentVia">Payment made via <span class="optional">optional</span></label><select id="paymentVia" name="paymentVia"><option value="">Not specified</option><option>Cash</option><option>Card</option><option>Bank transfer</option><option>UPI</option><option>Payment link</option><option>Other</option></select></div>
             <button class="details-toggle" id="moreDetailsButton" type="button" aria-expanded="false">Add tax, discount or a note <span>⌄</span></button>
             <div class="more-details" id="moreDetails" hidden>
-              <div class="two-column"><div><label for="discount">Discount</label><input id="discount" type="number" min="0" step="0.01" placeholder="0.00" /></div><div><label for="tax">Tax</label><select id="tax"><option value="0">No tax</option><option value="5">5% VAT</option><option value="18">18% GST</option></select></div></div>
+              <label for="taxRegion">Tax preset <span class="optional">optional</span></label><select id="taxRegion"><option value="none">Not charging tax</option><option value="india">India GST</option><option value="uae">UAE VAT</option></select><p class="tax-helper">Choose the applicable treatment for this bill; confirm rates and registration duties with an accountant.</p>
+              <div id="indiaTaxOptions" hidden><div class="two-column"><div><label for="indiaSupply">Supply type</label><select id="indiaSupply"><option value="local">Within the same state / UT</option><option value="interstate">Across states / UTs</option></select></div><div><label for="indiaGstRate">GST rate</label><select id="indiaGstRate"><option value="0">0%</option><option value="5">5%</option><option value="12">12%</option><option value="18" selected>18%</option><option value="28">28%</option></select></div></div><p class="tax-helper">Same-state bills split into CGST and SGST/UTGST; interstate bills use IGST.</p></div>
+              <div id="uaeTaxOptions" hidden><label for="uaeVatType">VAT treatment</label><select id="uaeVatType"><option value="standard">Standard rate — 5%</option><option value="zero">Zero-rated — 0%</option><option value="exempt">Exempt — 0%</option></select><p class="tax-helper">Use the applicable treatment for this supply.</p></div>
+              <label for="discount">Discount <span class="optional">optional</span></label><input id="discount" type="number" min="0" step="0.01" placeholder="0.00" />
               <label for="notes">A note for the customer <span class="optional">optional</span></label><textarea id="notes" rows="3" placeholder="Thank you for choosing us!"></textarea>
             </div>
           </fieldset>
@@ -69,16 +73,16 @@
               <button type="button" class="template-card" data-template="minimal" role="radio" aria-checked="false"><span class="template-swatch minimal"></span><strong>Minimal</strong><small>Simple & clean</small></button>
             </div>
           </fieldset>
-          <div class="action-stack"><button class="button button-primary" id="saveButton" type="submit">Preview & save bill <span aria-hidden="true">→</span></button><button class="button button-secondary" id="pdfButton" type="button">Save as PDF</button><button class="text-button copy-message" id="copyMessageButton" type="button">Copy a friendly message for Instagram or WhatsApp</button></div>
+          <div class="action-stack"><button class="button button-primary" id="saveButton" type="submit">Preview & save bill <span aria-hidden="true">→</span></button><button class="button button-secondary" id="pdfButton" type="button">Save as PDF</button><button class="button button-secondary" id="markPaidButton" type="button" hidden>Mark as paid</button><button class="text-button copy-message" id="copyMessageButton" type="button">Copy a friendly message for Instagram or WhatsApp</button></div>
         </form>
 
         <aside class="preview-column" aria-label="Bill preview">
           <div class="preview-top no-print"><div><p class="eyebrow">Live preview</p><p class="preview-help">This is exactly what your customer will see.</p></div><button class="icon-button" id="expandPreview" type="button" aria-label="Open bill preview in a new window">↗</button></div>
           <article class="invoice template-soft" id="invoice" aria-live="polite">
-            <div class="invoice-top"><div class="seller"><div class="seller-logo">M</div><div><h2 id="businessName">My Business</h2><p id="businessContact">Your phone or email</p><p id="businessLicense" hidden></p></div></div><div class="invoice-title"><p>BILL</p><strong id="invoiceNumber">#0001</strong></div></div>
+            <div class="invoice-top"><div class="seller"><div class="seller-logo">M</div><div><h2 id="businessName">My Business</h2><p id="businessContact">Your phone or email</p><p id="businessLicense" hidden></p></div></div><div class="invoice-title"><p>BILL</p><strong id="invoiceNumber">#0001</strong><span class="invoice-payment-status is-due" id="invoicePaymentStatus">Payment due</span></div></div>
             <div class="invoice-meta"><div><span>BILLED TO</span><strong id="previewCustomer">Customer name</strong><p id="previewCustomerContact">Customer contact</p><p id="previewCustomerAddress" class="payer-address" hidden></p></div><div><span>DATE</span><strong id="previewDate"></strong><div id="paymentMeta" hidden><span>PAID VIA</span><strong id="previewPayment"></strong></div></div></div>
             <div class="invoice-items"><div class="invoice-row invoice-header"><span>Description</span><span>Amount</span></div><div id="previewItems"><div class="invoice-row empty-row"><span>Your service or item</span><span>0.00</span></div></div></div>
-            <div class="invoice-totals"><div><span>Subtotal</span><strong id="subtotal">0.00</strong></div><div id="discountRow" hidden><span>Discount</span><strong id="discountValue">0.00</strong></div><div id="taxRow" hidden><span id="taxLabel">Tax</span><strong id="taxValue">0.00</strong></div><div class="grand-total"><span>Total due</span><strong id="grandTotal">0.00</strong></div></div>
+            <div class="invoice-totals"><div><span>Subtotal</span><strong id="subtotal">0.00</strong></div><div id="discountRow" hidden><span>Discount</span><strong id="discountValue">0.00</strong></div><div id="taxRows"></div><div class="grand-total"><span id="grandTotalLabel">Total due</span><strong id="grandTotal">0.00</strong></div></div>
             <p class="invoice-note" id="previewNote" hidden></p>
             <footer><p>Thank you — it has been lovely working with you.</p><p class="invoice-status">Prepared with Higher Folio</p></footer>
           </article>

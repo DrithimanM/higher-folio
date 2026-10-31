@@ -19,6 +19,10 @@
 .invoice-meta #paymentMeta { margin-top: 16px; }
 .invoice-meta #paymentMeta span { display: block; margin-bottom: 4px; }
 .seller #businessLicense { color: #53615e; font-size: 10px; font-weight: 650; }
+.tax-helper { margin: 9px 0 0; color: var(--muted); font-size: 12px; }
+.invoice-payment-status { display: inline-block; margin-top: 8px; padding: 3px 7px; border-radius: 999px; font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.invoice-payment-status.is-due { background: #fff1c8; color: #755915; }
+.invoice-payment-status.is-paid { background: #e1f1e8; color: #1d6344; }
 
 .copy-message { color: var(--muted); text-align: center; font-size: 12px; }
 .mobile-action-bar { display: none; }
