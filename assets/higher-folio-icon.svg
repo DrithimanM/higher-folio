@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title>Higher Folio</title>
+  <defs>
+    <linearGradient id="surface" x1="70" y1="40" x2="442" y2="476" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2f625a"/>
+      <stop offset="1" stop-color="#173f3b"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#0b2623" flood-opacity=".22"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="118" fill="url(#surface)"/>
+  <path d="M126 122c0-19 15-34 34-34h169l58 58v199c0 19-15 34-34 34H160c-19 0-34-15-34-34V122Z" fill="#f8f4ea" opacity=".16"/>
+  <path d="M339 88v45c0 15 12 27 27 27h45" fill="none" stroke="#d8b35c" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <g filter="url(#shadow)">
+    <path d="M133 153c0-19 15-34 34-34h161l51 51v175c0 19-15 34-34 34H167c-19 0-34-15-34-34V153Z" fill="#fbf8f0"/>
+    <path d="M328 119v41c0 16 13 29 29 29h22" fill="none" stroke="#d8b35c" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M196 188h42v55h77v-55h42v123h-42v-34h-77v34h-42V188Z" fill="#1f514b"/>
+    <path d="M196 331h161" stroke="#d8b35c" stroke-width="8" stroke-linecap="round"/>
+  </g>
+</svg>

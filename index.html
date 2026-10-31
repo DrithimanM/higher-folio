@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f7f4ee" />
+    <title>Higher Folio</title>
+    <link rel="icon" href="assets/higher-folio-icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="overrides.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar no-print">
+        <a class="brand" href="#" aria-label="Higher Folio home"><img class="brand-mark" src="assets/higher-folio-icon.svg" alt="" /><span>Higher Folio</span></a>
+        <p class="autosave" id="saveState" role="status">Saved privately on this laptop</p>
+        <button class="button button-quiet business-button" id="editBusinessButton" type="button">Business details</button>
+        <button class="button button-quiet" id="newBillButton" type="button">+ New bill</button>
+      </header>
+
+      <section class="welcome no-print" aria-labelledby="welcomeTitle">
+        <div>
+          <p class="eyebrow">Higher Folio</p>
+          <h1 id="welcomeTitle">Make your business<br />look as good as it is.</h1>
+          <p class="welcome-copy">Just fill in the few details below. Your PDF will be ready to share.</p>
+        </div>
+        <div class="quick-help"><span aria-hidden="true">✦</span><p><strong>Tip:</strong> everything stays on this laptop unless you share the PDF.</p></div>
+      </section>
+
+      <section class="workspace" aria-label="Create a bill">
+        <form class="editor no-print" id="billForm">
+          <div class="editor-heading"><div><p class="eyebrow">New bill</p><h2>Let’s add the details</h2></div><span class="step-pill">1 of 1</span></div>
+
+          <fieldset class="form-section">
+            <legend>Who is this for?</legend>
+            <label for="customerName">Customer name</label>
+            <input id="customerName" name="customerName" autocomplete="name" placeholder="e.g. Aisha Khan" />
+            <label for="customerContact">Email or phone <span class="optional">optional</span></label>
+            <input id="customerContact" name="customerContact" autocomplete="email" placeholder="For your own reference" />
+          </fieldset>
+
+          <fieldset class="form-section">
+            <legend>What did you provide?</legend>
+            <div class="item-row item-labels" aria-hidden="true"><span>Description</span><span>Amount</span></div>
+            <div class="item-row"><input id="itemDescription" aria-label="Item description" placeholder="e.g. Bridal makeup" value="" /><input id="itemAmount" aria-label="Item amount" inputmode="decimal" type="number" min="0" step="0.01" placeholder="0.00" /></div>
+            <button class="text-button" id="addItemButton" type="button">+ Add another item</button>
+            <div id="additionalItems"></div>
+          </fieldset>
+
+          <fieldset class="form-section compact-fields">
+            <legend>Bill details</legend>
+            <div class="two-column"><div><label for="currency">Currency</label><select id="currency" name="currency"><option value="AED">UAE Dirham</option><option value="INR">Indian Rupee</option></select></div><div><label for="issueDate">Date</label><input id="issueDate" name="issueDate" type="date" /></div></div>
+            <button class="details-toggle" id="moreDetailsButton" type="button" aria-expanded="false">Add tax, discount or a note <span>⌄</span></button>
+            <div class="more-details" id="moreDetails" hidden>
+              <div class="two-column"><div><label for="discount">Discount</label><input id="discount" type="number" min="0" step="0.01" placeholder="0.00" /></div><div><label for="tax">Tax</label><select id="tax"><option value="0">No tax</option><option value="5">5% VAT</option><option value="18">18% GST</option></select></div></div>
+              <label for="notes">A note for the customer <span class="optional">optional</span></label><textarea id="notes" rows="3" placeholder="Thank you for choosing us!"></textarea>
+            </div>
+          </fieldset>
+
+          <fieldset class="form-section">
+            <legend>Choose a look</legend>
+            <div class="templates" role="radiogroup" aria-label="Invoice template">
+              <button type="button" class="template-card selected" data-template="soft" role="radio" aria-checked="true"><span class="template-swatch soft"></span><strong>Soft modern</strong><small>Warm & elegant</small></button>
+              <button type="button" class="template-card" data-template="classic" role="radio" aria-checked="false"><span class="template-swatch classic"></span><strong>Classic</strong><small>Clear & familiar</small></button>
+              <button type="button" class="template-card" data-template="minimal" role="radio" aria-checked="false"><span class="template-swatch minimal"></span><strong>Minimal</strong><small>Simple & clean</small></button>
+            </div>
+          </fieldset>
+          <div class="action-stack"><button class="button button-primary" id="saveButton" type="submit">Preview & save bill <span aria-hidden="true">→</span></button><button class="button button-secondary" id="pdfButton" type="button">Save as PDF</button><button class="text-button copy-message" id="copyMessageButton" type="button">Copy a friendly message for Instagram or WhatsApp</button></div>
+        </form>
+
+        <aside class="preview-column" aria-label="Bill preview">
+          <div class="preview-top no-print"><div><p class="eyebrow">Live preview</p><p class="preview-help">This is exactly what your customer will see.</p></div><button class="icon-button" id="expandPreview" type="button" aria-label="Open bill preview in a new window">↗</button></div>
+          <article class="invoice template-soft" id="invoice" aria-live="polite">
+            <div class="invoice-top"><div class="seller"><div class="seller-logo">M</div><div><h2 id="businessName">My Business</h2><p id="businessContact">Your phone or email</p></div></div><div class="invoice-title"><p>BILL</p><strong id="invoiceNumber">#0001</strong></div></div>
+            <div class="invoice-meta"><div><span>BILLED TO</span><strong id="previewCustomer">Customer name</strong><p id="previewCustomerContact">Customer contact</p></div><div><span>DATE</span><strong id="previewDate"></strong></div></div>
+            <div class="invoice-items"><div class="invoice-row invoice-header"><span>Description</span><span>Amount</span></div><div id="previewItems"><div class="invoice-row empty-row"><span>Your service or item</span><span>0.00</span></div></div></div>
+            <div class="invoice-totals"><div><span>Subtotal</span><strong id="subtotal">0.00</strong></div><div id="discountRow" hidden><span>Discount</span><strong id="discountValue">0.00</strong></div><div id="taxRow" hidden><span id="taxLabel">Tax</span><strong id="taxValue">0.00</strong></div><div class="grand-total"><span>Total due</span><strong id="grandTotal">0.00</strong></div></div>
+            <p class="invoice-note" id="previewNote" hidden></p>
+            <footer><p>Thank you — it has been lovely working with you.</p><p class="invoice-status">Prepared with Higher Folio</p></footer>
+          </article>
+          <p class="pdf-note no-print">When you choose <strong>Save as PDF</strong>, select “Print to File” or “Save to PDF” in the next window.</p>
+        </aside>
+      </section>
+      <div class="mobile-action-bar no-print"><button class="button button-primary" id="mobilePdfButton" type="button">Save bill as PDF</button></div>
+    </main>
+    <dialog id="setupDialog"><form class="setup-card"><p class="eyebrow">A small first step</p><h2>What is your business called?</h2><p>It will appear at the top of every bill.</p><label for="setupBusiness">Business name</label><input id="setupBusiness" placeholder="e.g. Maya Beauty Studio" autofocus /><label for="setupContact">Phone or email <span class="optional">optional</span></label><input id="setupContact" placeholder="e.g. +971 50 000 0000" /><label for="setupInstagram">Instagram handle <span class="optional">optional</span></label><input id="setupInstagram" placeholder="e.g. @mayabeautystudio" autocomplete="off" /><button class="button button-primary" type="button" id="saveSetup">Continue</button></form></dialog>
+    <template id="itemTemplate"><div class="item-row added-item"><input aria-label="Item description" placeholder="Another service or item" /><input aria-label="Item amount" inputmode="decimal" type="number" min="0" step="0.01" placeholder="0.00" /><button type="button" class="remove-item" aria-label="Remove this item">×</button></div></template>
+    <script src="app.js"></script>
+  </body>
+</html>

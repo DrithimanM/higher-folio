@@ -1,0 +1,45 @@
+.dirham-icon {
+  display: inline-block;
+  width: 14px;
+  height: 13px;
+  margin-right: 3px;
+  object-fit: contain;
+  object-position: center;
+  vertical-align: -2px;
+}
+
+.brand-mark {
+  display: block;
+  background: transparent;
+  border-radius: 10px;
+  object-fit: contain;
+}
+
+.copy-message { color: var(--muted); text-align: center; font-size: 12px; }
+.mobile-action-bar { display: none; }
+.business-button { min-width: 116px; }
+
+@media (max-width: 700px) {
+  body { padding-bottom: 82px; }
+  .app-shell { padding-bottom: 22px; }
+  .welcome-copy { font-size: 16px; }
+  .workspace { gap: 18px; }
+  .business-button { display: none; }
+  .editor { border-radius: 16px; }
+  .preview-column { margin-top: 8px; }
+  .preview-top { padding: 0 4px; }
+  .invoice { min-height: 570px; }
+  .mobile-action-bar {
+    display: block;
+    position: fixed;
+    z-index: 10;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    background: rgba(246, 242, 233, .94);
+    border-top: 1px solid var(--line);
+    backdrop-filter: blur(12px);
+  }
+  .mobile-action-bar .button { width: 100%; min-height: 52px; }
+}
