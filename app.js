@@ -222,6 +222,7 @@ $('copyMessageButton').addEventListener('click', copyMessage);
 $('newBillButton').addEventListener('click', () => { $('billForm').reset(); $('issueDate').value = today; $('additionalItems').innerHTML = ''; $('moreDetails').hidden = true; $('moreDetailsButton').setAttribute('aria-expanded', 'false'); $('indiaTaxOptions').hidden = true; $('uaeTaxOptions').hidden = true; currentInvoice = createInvoice(nextSequence); updatePaymentControls(); render(); $('customerName').focus(); });
 $('markPaidButton').addEventListener('click', () => { $('paymentStatus').value = 'paid'; updatePaymentControls(); updateSavedInvoice(); render(); saveState('Marked as paid — add the payment method if you want'); });
 $('editBusinessButton').addEventListener('click', editBusiness);
+$('mobileBusinessButton').addEventListener('click', editBusiness);
 $('expandPreview').addEventListener('click', openPrint);
 $('setupQr').addEventListener('change', () => {
   const file = $('setupQr').files[0];

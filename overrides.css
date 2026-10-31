@@ -53,7 +53,9 @@
   .invoice { min-height: 570px; }
   .invoice-payment-details { align-items: flex-start; }
   .mobile-action-bar {
-    display: block;
+    display: grid;
+    grid-template-columns: minmax(128px, .9fr) minmax(0, 1.35fr);
+    gap: 8px;
     position: fixed;
     z-index: 10;
     right: 0;
@@ -64,5 +66,5 @@
     border-top: 1px solid var(--line);
     backdrop-filter: blur(12px);
   }
-  .mobile-action-bar .button { width: 100%; min-height: 52px; }
+  .mobile-action-bar .button { width: 100%; min-height: 52px; padding-right: 10px; padding-left: 10px; font-size: 13px; }
 }
