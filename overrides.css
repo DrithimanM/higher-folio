@@ -24,6 +24,19 @@
 .invoice-payment-status.is-due { background: #fff1c8; color: #755915; }
 .invoice-payment-status.is-paid { background: #e1f1e8; color: #1d6344; }
 
+.payment-settings { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
+.setup-section-title { margin: 0 0 4px; color: var(--ink); font-size: 14px; font-weight: 750; }
+.setup-helper { margin: 0 0 12px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.payment-settings input[type="file"] { padding: 10px; font-size: 12px; }
+.remove-qr { min-height: 36px; margin-top: -4px; font-size: 12px; }
+.invoice-payment-details { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin: 24px 0 0; padding: 16px; border: 1px solid #d7dfd7; border-radius: 12px; background: #f6f9f5; }
+.payment-details-copy { min-width: 0; }
+.payment-details-title { margin: 0 0 8px; color: #35614d; font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.payment-details-copy p:not(.payment-details-title) { margin: 3px 0; color: #31423a; font-size: 11px; line-height: 1.35; overflow-wrap: anywhere; }
+.payment-qr { flex: 0 0 auto; margin: 0; text-align: center; }
+.payment-qr img { display: block; width: 88px; height: 88px; padding: 4px; border: 1px solid #c6d1c8; border-radius: 7px; background: #fff; object-fit: contain; }
+.payment-qr figcaption { margin-top: 5px; color: #53615e; font-size: 8px; font-weight: 650; }
+
 .copy-message { color: var(--muted); text-align: center; font-size: 12px; }
 .mobile-action-bar { display: none; }
 .business-button { min-width: 116px; }
@@ -38,6 +51,7 @@
   .preview-column { margin-top: 8px; }
   .preview-top { padding: 0 4px; }
   .invoice { min-height: 570px; }
+  .invoice-payment-details { align-items: flex-start; }
   .mobile-action-bar {
     display: block;
     position: fixed;

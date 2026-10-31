@@ -2,6 +2,8 @@ const $ = (id) => document.getElementById(id);
 const appKey = 'simply-bill-v1';
 let template = 'soft';
 let nextSequence = Number(localStorage.getItem('higherFolioNext') || localStorage.getItem('simplyBillNext') || '1');
+let businessProfile = {};
+let pendingQrData = null;
 
 const symbol = (currency) => currency === 'INR' ? '₹ ' : '<img class="dirham-icon" src="assets/uae-dirham-symbol.png" alt="Dirham" />';
 const amount = (number) => `${symbol($('currency').value)}${Number(number || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
@@ -54,6 +56,25 @@ function updateSavedInvoice() {
   localStorage.setItem(appKey, JSON.stringify(records.map(record => record.number === invoiceId() ? {...record, paymentStatus: $('paymentStatus').value, paymentVia: $('paymentVia').value} : record)));
 }
 
+function renderPaymentDetails(paid) {
+  const hasBankDetails = Boolean(businessProfile.bankName || businessProfile.accountName || businessProfile.accountNumber || businessProfile.upiId);
+  const hasPaymentDetails = hasBankDetails || Boolean(businessProfile.upiQr);
+  $('paymentDetails').hidden = paid || !hasPaymentDetails;
+  if (paid || !hasPaymentDetails) return;
+  const details = [
+    ['paymentBankName', businessProfile.bankName, 'Bank: '],
+    ['paymentAccountName', businessProfile.accountName, 'Account name: '],
+    ['paymentAccountNumber', businessProfile.accountNumber, 'Account / IBAN: '],
+    ['paymentUpiId', businessProfile.upiId, 'UPI ID: ']
+  ];
+  details.forEach(([id, value, label]) => {
+    $(id).hidden = !value;
+    $(id).textContent = value ? `${label}${value}` : '';
+  });
+  $('paymentQr').hidden = !businessProfile.upiQr;
+  $('paymentQrImage').src = businessProfile.upiQr || '';
+}
+
 function render() {
   const items = itemData();
   const subtotal = items.reduce((sum, item) => sum + item.amount, 0);
@@ -81,6 +102,7 @@ function render() {
   $('grandTotalLabel').textContent = paid ? 'Total paid' : 'Total due';
   $('invoicePaymentStatus').textContent = paid ? 'Paid' : 'Payment due';
   $('invoicePaymentStatus').className = `invoice-payment-status ${paid ? 'is-paid' : 'is-due'}`;
+  renderPaymentDetails(paid);
   const note = $('notes').value.trim();
   $('previewNote').hidden = !note;
   $('previewNote').textContent = note;
@@ -122,6 +144,7 @@ async function copyMessage() {
   catch { saveState('Your message is ready to copy from the preview'); }
 }
 function applyBusinessProfile(profile) {
+  businessProfile = profile;
   $('businessName').textContent = profile.name || 'My Business';
   $('businessContact').textContent = [profile.contact, profile.instagram].filter(Boolean).join(' · ') || 'Thank you for your business';
   $('businessLicense').hidden = !profile.tradeLicense;
@@ -133,11 +156,19 @@ function setupBusiness() {
   $('setupDialog').showModal();
 }
 function editBusiness() {
-  const profile = JSON.parse(localStorage.getItem('simplyBillProfile') || '{}');
+  const profile = businessProfile;
   $('setupBusiness').value = profile.name || '';
   $('setupContact').value = profile.contact || '';
   $('setupInstagram').value = profile.instagram || '';
   $('setupTradeLicense').value = profile.tradeLicense || '';
+  $('setupBankName').value = profile.bankName || '';
+  $('setupAccountName').value = profile.accountName || '';
+  $('setupAccountNumber').value = profile.accountNumber || '';
+  $('setupUpiId').value = profile.upiId || '';
+  $('setupQr').value = '';
+  pendingQrData = null;
+  $('qrFileName').textContent = profile.upiQr ? 'A QR image is saved on this device. Choose another image to replace it.' : 'Choose a small QR image (up to 750 KB). It stays only on this device.';
+  $('removeQrButton').hidden = !profile.upiQr;
   $('setupDialog').showModal();
 }
 
@@ -158,5 +189,34 @@ $('newBillButton').addEventListener('click', () => { $('billForm').reset(); $('i
 $('markPaidButton').addEventListener('click', () => { $('paymentStatus').value = 'paid'; updatePaymentControls(); updateSavedInvoice(); render(); saveState('Marked as paid — add the payment method if you want'); });
 $('editBusinessButton').addEventListener('click', editBusiness);
 $('expandPreview').addEventListener('click', openPrint);
-$('saveSetup').addEventListener('click', () => { const name = $('setupBusiness').value.trim() || 'My Business'; const contact = $('setupContact').value.trim(); const instagram = $('setupInstagram').value.trim(); const tradeLicense = $('setupTradeLicense').value.trim(); const profile = {name, contact, instagram, tradeLicense}; localStorage.setItem('simplyBillProfile', JSON.stringify(profile)); applyBusinessProfile(profile); $('setupDialog').close(); });
+$('setupQr').addEventListener('change', () => {
+  const file = $('setupQr').files[0];
+  pendingQrData = null;
+  if (!file) return;
+  if (!file.type.startsWith('image/') || file.size > 750000) {
+    $('setupQr').value = '';
+    $('qrFileName').textContent = 'Please choose an image under 750 KB.';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => { pendingQrData = String(reader.result); $('qrFileName').textContent = 'QR image ready. It will be saved only on this device.'; };
+  reader.onerror = () => { $('qrFileName').textContent = 'That image could not be read. Please choose another one.'; };
+  reader.readAsDataURL(file);
+});
+$('removeQrButton').addEventListener('click', () => {
+  pendingQrData = '';
+  $('setupQr').value = '';
+  $('removeQrButton').hidden = true;
+  $('qrFileName').textContent = 'The saved QR will be removed when you continue.';
+});
+$('saveSetup').addEventListener('click', () => {
+  const name = $('setupBusiness').value.trim() || 'My Business';
+  const contact = $('setupContact').value.trim();
+  const instagram = $('setupInstagram').value.trim();
+  const tradeLicense = $('setupTradeLicense').value.trim();
+  const profile = {name, contact, instagram, tradeLicense, bankName: $('setupBankName').value.trim(), accountName: $('setupAccountName').value.trim(), accountNumber: $('setupAccountNumber').value.trim(), upiId: $('setupUpiId').value.trim(), upiQr: pendingQrData !== null ? pendingQrData : businessProfile.upiQr || ''};
+  try { localStorage.setItem('simplyBillProfile', JSON.stringify(profile)); }
+  catch { saveState('QR image is too large to save here — please choose a smaller one'); return; }
+  applyBusinessProfile(profile); render(); $('setupDialog').close(); saveState('Business and payment details saved privately');
+});
 setupBusiness(); updatePaymentControls(); render();
