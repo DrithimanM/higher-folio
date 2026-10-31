@@ -14,7 +14,7 @@
       <header class="topbar no-print">
         <a class="brand" href="#" aria-label="Higher Folio home"><img class="brand-mark" src="assets/higher-folio-icon.svg" alt="" /><span>Higher Folio</span></a>
         <p class="autosave" id="saveState" role="status">Saved privately on this laptop</p>
-        <button class="button button-quiet business-button" id="editBusinessButton" type="button"><span class="business-label-desktop">Business details</span><span class="business-label-mobile">Business</span></button>
+        <button class="button button-quiet business-button" id="editBusinessButton" data-edit-business type="button"><span class="business-label-desktop">Business details</span><span class="business-label-mobile">Business</span></button>
         <button class="button button-quiet" id="newBillButton" type="button">+ New bill</button>
       </header>
 
@@ -30,6 +30,7 @@
       <section class="workspace" aria-label="Create a bill">
         <form class="editor no-print" id="billForm">
           <div class="editor-heading"><div><p class="eyebrow">New bill</p><h2>Let’s add the details</h2></div><span class="step-pill">1 of 1</span></div>
+          <button class="business-settings-card" id="businessSetupButton" data-edit-business type="button"><span><strong>Business &amp; payment details</strong><small>Address, trade licence, bank, UPI &amp; QR</small></span><span aria-hidden="true">›</span></button>
 
           <fieldset class="form-section">
             <legend>Who is this for?</legend>
@@ -90,7 +91,7 @@
           <p class="pdf-note no-print">When you choose <strong>Save as PDF</strong>, select “Print to File” or “Save to PDF” in the next window.</p>
         </aside>
       </section>
-      <div class="mobile-action-bar no-print"><button class="button button-secondary mobile-business-button" id="mobileBusinessButton" type="button">Business details</button><button class="button button-primary" id="mobilePdfButton" type="button">Save bill as PDF</button></div>
+      <div class="mobile-action-bar no-print"><button class="button button-secondary mobile-business-button" id="mobileBusinessButton" data-edit-business type="button">Business details</button><button class="button button-primary" id="mobilePdfButton" type="button">Save bill as PDF</button></div>
     </main>
     <dialog id="setupDialog"><form class="setup-card"><p class="eyebrow">A small first step</p><h2>What is your business called?</h2><p>It will appear at the top of every bill.</p><label for="setupBusiness">Business name</label><input id="setupBusiness" placeholder="e.g. Maya Beauty Studio" autofocus /><label for="setupContact">Phone or email <span class="optional">optional</span></label><input id="setupContact" placeholder="e.g. +971 50 000 0000" /><label for="setupInstagram">Instagram handle <span class="optional">optional</span></label><input id="setupInstagram" placeholder="e.g. @mayabeautystudio" autocomplete="off" /><label for="setupTradeLicense">Trade licence number <span class="optional">optional</span></label><input id="setupTradeLicense" placeholder="e.g. CN-1234567" autocomplete="off" /><div class="payment-settings"><p class="setup-section-title">How customers can pay <span class="optional">optional</span></p><p class="setup-helper">These details only show while a bill is due.</p><label for="setupBankName">Bank name</label><input id="setupBankName" placeholder="e.g. Emirates NBD" autocomplete="off" /><label for="setupAccountName">Account holder name</label><input id="setupAccountName" placeholder="e.g. Maya Beauty Studio" autocomplete="off" /><label for="setupAccountNumber">Account number or IBAN</label><input id="setupAccountNumber" placeholder="e.g. AE07 0331 2345 6789 0123 456" autocomplete="off" /><label for="setupUpiId">UPI ID</label><input id="setupUpiId" placeholder="e.g. mayastudio@upi" autocomplete="off" /><p class="setup-helper">For INR bills, Higher Folio creates a QR with the exact amount automatically.</p><label for="setupQr">Upload a different payment QR <span class="optional">optional</span></label><input id="setupQr" type="file" accept="image/*" aria-describedby="qrFileName" /><p class="setup-helper" id="qrFileName">Choose a small QR image (up to 750 KB). It stays only on this device.</p><button class="text-button remove-qr" id="removeQrButton" type="button" hidden>Remove saved QR</button></div><button class="button button-primary" type="button" id="saveSetup">Continue</button></form></dialog>
     <template id="itemTemplate"><div class="item-row added-item"><input aria-label="Item description" placeholder="Another service or item" /><input aria-label="Item amount" inputmode="decimal" type="number" min="0" step="0.01" placeholder="0.00" /><button type="button" class="remove-item" aria-label="Remove this item">×</button></div></template>
