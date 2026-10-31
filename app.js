@@ -34,7 +34,13 @@ function render() {
   const total = taxable + tax;
   $('previewCustomer').textContent = $('customerName').value.trim() || 'Customer name';
   $('previewCustomerContact').textContent = $('customerContact').value.trim() || 'Customer contact';
+  const payerAddress = $('customerAddress').value.trim();
+  $('previewCustomerAddress').hidden = !payerAddress;
+  $('previewCustomerAddress').textContent = payerAddress;
   $('previewDate').textContent = formatDate($('issueDate').value);
+  const paymentVia = $('paymentVia').value;
+  $('paymentMeta').hidden = !paymentVia;
+  $('previewPayment').textContent = paymentVia;
   $('previewItems').innerHTML = items.length ? items.map(item => `<div class="invoice-row"><span>${escapeHtml(item.description || 'Service')}</span><span>${amount(item.amount)}</span></div>`).join('') : '<div class="invoice-row empty-row"><span>Your service or item</span><span>0.00</span></div>';
   $('subtotal').innerHTML = amount(subtotal);
   $('discountRow').hidden = discount === 0;

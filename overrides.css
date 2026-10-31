@@ -15,6 +15,10 @@
   object-fit: contain;
 }
 
+.payer-address { white-space: pre-line; }
+.invoice-meta #paymentMeta { margin-top: 16px; }
+.invoice-meta #paymentMeta span { display: block; margin-bottom: 4px; }
+
 .copy-message { color: var(--muted); text-align: center; font-size: 12px; }
 .mobile-action-bar { display: none; }
 .business-button { min-width: 116px; }
