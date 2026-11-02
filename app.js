@@ -2,11 +2,17 @@ const $ = (id) => document.getElementById(id);
 const appKey = 'simply-bill-v1';
 const accountKey = 'higherFolioAccount-v1';
 const accountSessionKey = 'higherFolioUnlocked-v1';
+const customerKey = 'higherFolioCustomers-v1';
+const businessesKey = 'higherFolioBusinesses-v1';
+const activeBusinessKey = 'higherFolioActiveBusiness-v1';
 let template = 'soft';
 let nextSequence = Number(localStorage.getItem('higherFolioNext') || localStorage.getItem('simplyBillNext') || '1');
 let businessProfile = {};
 let pendingQrData = null;
+let pendingLogoData = null;
 let archiveFilter = 'all';
+let businessProfiles = [];
+let editingBusinessId = null;
 
 const symbol = (currency) => currency === 'INR' ? '₹ ' : '<img class="dirham-icon" src="assets/uae-dirham-symbol.png" alt="Dirham" />';
 const amount = (number) => `${symbol($('currency').value)}${Number(number || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
@@ -178,6 +184,7 @@ function saveBill() {
   currentInvoice.julian = julianDay($('issueDate').value);
   records.unshift({number: invoiceId(), invoice: {...currentInvoice}, createdAt: new Date().toISOString(), customer: $('customerName').value.trim(), currency: $('currency').value, total: totals.total, template, documentType: $('documentType').value, paymentStatus: $('paymentStatus').value, paymentVia: $('paymentVia').value, snapshot: billSnapshot()});
   localStorage.setItem(appKey, JSON.stringify(records.slice(0, 100)));
+  rememberCurrentCustomer();
   currentInvoice.saved = true;
   nextSequence = currentInvoice.sequence + 1;
   localStorage.setItem('higherFolioNext', String(nextSequence));
@@ -223,20 +230,55 @@ async function copyMessage() {
 function applyBusinessProfile(profile) {
   businessProfile = profile;
   $('businessName').textContent = profile.name || 'My Business';
+  $('businessMonogram').textContent = (profile.name || 'M').trim().charAt(0).toUpperCase() || 'M';
+  $('businessLogo').hidden = !profile.logo;
+  $('businessLogo').src = profile.logo || '';
   $('businessContact').textContent = [profile.contact, profile.instagram].filter(Boolean).join(' · ') || 'Thank you for your business';
   $('businessAddress').hidden = !profile.address;
   $('businessAddress').textContent = profile.address || '';
   $('businessLicense').hidden = !profile.tradeLicense;
   $('businessLicense').textContent = profile.tradeLicense ? `Trade licence no. ${profile.tradeLicense}` : '';
 }
-function setupBusiness() {
-  const profile = JSON.parse(localStorage.getItem('simplyBillProfile') || 'null');
-  if (profile) { applyBusinessProfile(profile); return; }
-  $('setupDialog').showModal();
+function businessId() { return `business-${Date.now()}-${Math.random().toString(16).slice(2)}`; }
+function readBusinesses() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(businessesKey) || '[]');
+    if (Array.isArray(saved) && saved.length) return saved;
+    const legacy = JSON.parse(localStorage.getItem('simplyBillProfile') || 'null');
+    if (legacy) {
+      const migrated = [{...legacy, id: businessId()}];
+      localStorage.setItem(businessesKey, JSON.stringify(migrated));
+      localStorage.setItem(activeBusinessKey, migrated[0].id);
+      return migrated;
+    }
+  } catch { return []; }
+  return [];
 }
-function editBusiness() {
-  const profile = businessProfile;
+function saveBusinesses() { localStorage.setItem(businessesKey, JSON.stringify(businessProfiles)); }
+function activeBusiness() { return businessProfiles.find(profile => profile.id === localStorage.getItem(activeBusinessKey)) || businessProfiles[0] || null; }
+function renderBusinessPickers() {
+  const active = activeBusiness();
+  const options = businessProfiles.map(profile => `<option value="${escapeHtml(profile.id)}">${escapeHtml(profile.name || 'Untitled business')}</option>`).join('');
+  $('businessSwitcher').innerHTML = options;
+  $('businessSwitcher').hidden = businessProfiles.length < 2;
+  if (active) $('businessSwitcher').value = active.id;
+  $('businessProfileControls').hidden = businessProfiles.length < 1;
+  $('setupBusinessPicker').innerHTML = options;
+  if (editingBusinessId) $('setupBusinessPicker').value = editingBusinessId;
+}
+function setActiveBusiness(id) {
+  const profile = businessProfiles.find(entry => entry.id === id);
+  if (!profile) return;
+  localStorage.setItem(activeBusinessKey, profile.id);
+  editingBusinessId = profile.id;
+  applyBusinessProfile(profile); renderBusinessPickers(); render();
+}
+function fillBusinessEditor(profile = {}) {
   $('setupBusiness').value = profile.name || '';
+  $('setupLogo').value = '';
+  pendingLogoData = null;
+  $('logoFileName').textContent = profile.logo ? 'A logo is saved on this device. Choose another image to replace it.' : 'Choose a small square logo (up to 750 KB). It stays only on this device.';
+  $('removeLogoButton').hidden = !profile.logo;
   $('setupContact').value = profile.contact || '';
   $('setupInstagram').value = profile.instagram || '';
   $('setupBusinessAddress').value = profile.address || '';
@@ -251,7 +293,66 @@ function editBusiness() {
   pendingQrData = null;
   $('qrFileName').textContent = profile.upiQr ? 'A QR image is saved on this device. Choose another image to replace it.' : 'Choose a small QR image (up to 750 KB). It stays only on this device.';
   $('removeQrButton').hidden = !profile.upiQr;
+  $('businessDialogTitle').textContent = profile.id ? `Edit ${profile.name || 'business'}` : 'Add another business';
+  $('businessDialogIntro').textContent = profile.id ? 'Update the details that belong only to this business.' : 'Set up separate details for this business. You can switch before making a bill.';
+}
+function setupBusiness() {
+  businessProfiles = readBusinesses();
+  const profile = activeBusiness();
+  if (profile) { editingBusinessId = profile.id; applyBusinessProfile(profile); renderBusinessPickers(); return; }
+  editingBusinessId = null;
+  renderBusinessPickers(); fillBusinessEditor(); $('setupDialog').showModal();
+}
+function editBusiness() {
+  businessProfiles = readBusinesses();
+  const profile = activeBusiness();
+  editingBusinessId = profile?.id || null;
+  renderBusinessPickers(); fillBusinessEditor(profile || {});
   $('setupDialog').showModal();
+}
+
+function savedCustomers() {
+  try { return JSON.parse(localStorage.getItem(customerKey) || '[]'); }
+  catch { return []; }
+}
+function renderSavedCustomers(selectedId = '') {
+  const customers = savedCustomers();
+  $('savedCustomer').innerHTML = `<option value="">New customer</option>${customers.map(customer => `<option value="${escapeHtml(customer.id)}">${escapeHtml(customer.name)}</option>`).join('')}`;
+  $('savedCustomer').value = selectedId;
+}
+function rememberCurrentCustomer() {
+  const name = $('customerName').value.trim();
+  if (!name) return false;
+  const details = {name, contact: $('customerContact').value.trim(), address: $('customerAddress').value.trim()};
+  const customers = savedCustomers();
+  const selectedId = $('savedCustomer').value;
+  const existingIndex = customers.findIndex(customer => customer.id === selectedId || customer.name.toLocaleLowerCase() === name.toLocaleLowerCase());
+  const customer = {...details, id: existingIndex >= 0 ? customers[existingIndex].id : `customer-${Date.now()}-${Math.random().toString(16).slice(2)}`};
+  if (existingIndex >= 0) customers[existingIndex] = customer;
+  else customers.unshift(customer);
+  localStorage.setItem(customerKey, JSON.stringify(customers.slice(0, 100)));
+  renderSavedCustomers(customer.id);
+  return true;
+}
+function fillCustomer(id) {
+  const customer = savedCustomers().find(entry => entry.id === id);
+  if (!customer) return;
+  $('customerName').value = customer.name || '';
+  $('customerContact').value = customer.contact || '';
+  $('customerAddress').value = customer.address || '';
+  render(); saveState(`${customer.name} added to this bill`);
+}
+
+function selectAppTab(tab) {
+  const create = tab === 'create';
+  $('createPanel').hidden = !create;
+  $('bookkeepingPanel').hidden = create;
+  $('mobileActionBar').hidden = !create;
+  $('createTab').classList.toggle('selected', create);
+  $('bookkeepingTab').classList.toggle('selected', !create);
+  $('createTab').setAttribute('aria-selected', String(create));
+  $('bookkeepingTab').setAttribute('aria-selected', String(!create));
+  if (!create) renderArchive();
 }
 
 function formatArchiveAmount(currency, value) { return currency === 'INR' ? `₹${Number(value || 0).toFixed(2)}` : `AED ${Number(value || 0).toFixed(2)}`; }
@@ -265,6 +366,8 @@ function renderArchive() {
   const dueTotals = records.filter(record => record.paymentStatus !== 'paid').reduce((totals, record) => ({...totals, [record.currency]: (totals[record.currency] || 0) + Number(record.total || 0)}), {});
   const dueValue = Object.entries(dueTotals).map(([currency, total]) => formatArchiveAmount(currency, total)).join(' · ') || '—';
   $('archiveSummary').innerHTML = `<div><span>Saved</span><strong>${records.length}</strong></div><div><span>Due</span><strong>${records.filter(record => record.paymentStatus !== 'paid').length}</strong></div><div><span>Due value</span><strong>${dueValue}</strong></div>`;
+  $('bookkeepingCount').hidden = records.length === 0;
+  $('bookkeepingCount').textContent = records.length || '';
   document.querySelectorAll('[data-filter]').forEach(button => button.classList.toggle('selected', button.dataset.filter === archiveFilter));
   $('archiveList').innerHTML = filtered.length ? filtered.map(record => `<article class="archive-row"><div><strong>${escapeHtml(record.customer || 'Customer')}</strong><small>${escapeHtml(record.documentType || 'Bill')} · ${escapeHtml(record.number)} · ${formatDate(record.snapshot?.issueDate || record.createdAt?.slice(0, 10))}</small><span class="invoice-payment-status ${record.paymentStatus === 'paid' ? 'is-paid' : 'is-due'}">${record.paymentStatus === 'paid' ? 'Paid' : 'Payment due'}</span></div><div class="archive-row-actions"><strong>${formatArchiveAmount(record.currency, record.total)}</strong><button class="button button-secondary" type="button" data-load-bill="${escapeHtml(record.number)}">Open bill</button></div></article>`).join('') : '<p class="archive-empty">No saved bills here yet. Save a completed bill and it will appear here.</p>';
 }
@@ -313,7 +416,7 @@ function openSavedBill(number) {
   restoreItems(data.items);
   setTemplate(data.template);
   currentInvoice = record.invoice ? {...record.invoice, saved: true} : {...createInvoice(nextSequence), saved: true};
-  updatePaymentControls(); render(); $('archiveDialog').close(); saveState(`Opened bill ${record.number}`);
+  updatePaymentControls(); render(); selectAppTab('create'); saveState(`Opened bill ${record.number}`);
 }
 
 function randomSalt() {
@@ -343,7 +446,7 @@ function unlockApplication() {
   sessionStorage.setItem(accountSessionKey, 'true');
   document.body.classList.remove('account-locked');
   $('accountDialog').close();
-  setupBusiness(); updatePaymentControls(); render();
+  setupBusiness(); renderSavedCustomers(); updatePaymentControls(); render(); renderArchive();
 }
 async function initializeAccount() {
   const account = accountRecord();
@@ -390,21 +493,36 @@ $('paymentStatus').addEventListener('change', () => { updatePaymentControls(); u
 $('paymentVia').addEventListener('change', () => { updateSavedInvoice(); render(); });
 $('addItemButton').addEventListener('click', addItem);
 $('moreDetailsButton').addEventListener('click', () => { const open = $('moreDetails').hidden; $('moreDetails').hidden = !open; $('moreDetailsButton').setAttribute('aria-expanded', String(open)); });
-document.querySelectorAll('.template-card').forEach(button => button.addEventListener('click', () => { template = button.dataset.template; document.querySelectorAll('.template-card').forEach(card => { const selected = card === button; card.classList.toggle('selected', selected); card.setAttribute('aria-checked', String(selected)); }); $('invoice').className = `invoice template-${template}`; render(); }));
+document.querySelectorAll('.template-card').forEach(button => button.addEventListener('click', () => { setTemplate(button.dataset.template); render(); }));
 $('billForm').addEventListener('submit', event => { event.preventDefault(); if (!$('customerName').value.trim() || !itemData().length) { saveState('Add a customer and at least one item first'); (!$('customerName').value.trim() ? $('customerName') : $('itemDescription')).focus(); return; } saveBill(); });
 $('pdfButton').addEventListener('click', openPrint);
 $('printButton').addEventListener('click', openPrint);
 $('wordButton').addEventListener('click', downloadWordCopy);
 $('mobilePdfButton').addEventListener('click', openPrint);
 $('copyMessageButton').addEventListener('click', copyMessage);
-$('newBillButton').addEventListener('click', () => { $('billForm').reset(); $('issueDate').value = today; $('additionalItems').innerHTML = ''; $('moreDetails').hidden = true; $('moreDetailsButton').setAttribute('aria-expanded', 'false'); $('indiaTaxOptions').hidden = true; $('uaeTaxOptions').hidden = true; currentInvoice = createInvoice(nextSequence); updatePaymentControls(); render(); $('customerName').focus(); });
+$('newBillButton').addEventListener('click', () => { $('billForm').reset(); $('issueDate').value = today; $('additionalItems').innerHTML = ''; $('moreDetails').hidden = true; $('moreDetailsButton').setAttribute('aria-expanded', 'false'); $('indiaTaxOptions').hidden = true; $('uaeTaxOptions').hidden = true; currentInvoice = createInvoice(nextSequence); renderSavedCustomers(); updatePaymentControls(); render(); $('customerName').focus(); });
 $('markPaidButton').addEventListener('click', () => { $('paymentStatus').value = 'paid'; updatePaymentControls(); updateSavedInvoice(); render(); saveState('Marked as paid — add the payment method if you want'); });
 document.querySelectorAll('[data-edit-business]').forEach(button => button.addEventListener('click', editBusiness));
+$('businessSwitcher').addEventListener('change', () => setActiveBusiness($('businessSwitcher').value));
+$('setupBusinessPicker').addEventListener('change', () => {
+  editingBusinessId = $('setupBusinessPicker').value;
+  fillBusinessEditor(businessProfiles.find(profile => profile.id === editingBusinessId) || {});
+});
+$('addBusinessButton').addEventListener('click', () => {
+  editingBusinessId = null;
+  $('setupBusinessPicker').value = '';
+  fillBusinessEditor();
+  $('setupBusiness').focus();
+});
 $('expandPreview').addEventListener('click', openPrint);
-$('archiveButton').addEventListener('click', () => { archiveFilter = 'all'; renderArchive(); $('archiveDialog').showModal(); });
-$('closeArchiveButton').addEventListener('click', () => $('archiveDialog').close());
+$('archiveButton').addEventListener('click', () => { archiveFilter = 'all'; selectAppTab('bookkeeping'); });
+$('createTab').addEventListener('click', () => selectAppTab('create'));
+$('bookkeepingTab').addEventListener('click', () => selectAppTab('bookkeeping'));
+$('newBookkeepingBill').addEventListener('click', () => { selectAppTab('create'); $('newBillButton').click(); });
 document.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => { archiveFilter = button.dataset.filter; renderArchive(); }));
 $('archiveList').addEventListener('click', event => { const button = event.target.closest('[data-load-bill]'); if (button) openSavedBill(button.dataset.loadBill); });
+$('savedCustomer').addEventListener('change', () => fillCustomer($('savedCustomer').value));
+$('saveCustomerButton').addEventListener('click', () => { if (rememberCurrentCustomer()) saveState('Customer details saved for the next bill'); else { saveState('Add the customer name before saving'); $('customerName').focus(); } });
 $('accountForm').addEventListener('submit', handleAccountSubmit);
 $('accountDialog').addEventListener('cancel', event => event.preventDefault());
 $('setupQr').addEventListener('change', () => {
@@ -421,6 +539,26 @@ $('setupQr').addEventListener('change', () => {
   reader.onerror = () => { $('qrFileName').textContent = 'That image could not be read. Please choose another one.'; };
   reader.readAsDataURL(file);
 });
+$('setupLogo').addEventListener('change', () => {
+  const file = $('setupLogo').files[0];
+  pendingLogoData = null;
+  if (!file) return;
+  if (!file.type.startsWith('image/') || file.size > 750000) {
+    $('setupLogo').value = '';
+    $('logoFileName').textContent = 'Please choose an image under 750 KB.';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => { pendingLogoData = String(reader.result); $('logoFileName').textContent = 'Logo ready. It will be saved only on this device.'; };
+  reader.onerror = () => { $('logoFileName').textContent = 'That image could not be read. Please choose another one.'; };
+  reader.readAsDataURL(file);
+});
+$('removeLogoButton').addEventListener('click', () => {
+  pendingLogoData = '';
+  $('setupLogo').value = '';
+  $('removeLogoButton').hidden = true;
+  $('logoFileName').textContent = 'The saved logo will be removed when you continue.';
+});
 $('removeQrButton').addEventListener('click', () => {
   pendingQrData = '';
   $('setupQr').value = '';
@@ -435,9 +573,17 @@ $('saveSetup').addEventListener('click', () => {
   const cryptoNetwork = $('setupCryptoNetwork').value;
   const cryptoAddress = $('setupCryptoAddress').value.trim();
   if (cryptoAddress && !cryptoNetwork) { saveState('Choose the crypto network before saving the wallet address'); $('setupCryptoNetwork').focus(); return; }
-  const profile = {name, contact, instagram, address: $('setupBusinessAddress').value.trim(), tradeLicense, bankName: $('setupBankName').value.trim(), accountName: $('setupAccountName').value.trim(), accountNumber: $('setupAccountNumber').value.trim(), upiId: $('setupUpiId').value.trim(), cryptoNetwork, cryptoAddress, upiQr: pendingQrData !== null ? pendingQrData : businessProfile.upiQr || ''};
-  try { localStorage.setItem('simplyBillProfile', JSON.stringify(profile)); }
-  catch { saveState('QR image is too large to save here — please choose a smaller one'); return; }
-  applyBusinessProfile(profile); render(); $('setupDialog').close(); saveState('Business and payment details saved privately');
+  const existing = businessProfiles.find(profile => profile.id === editingBusinessId) || {};
+  const profile = {id: existing.id || businessId(), name, logo: pendingLogoData !== null ? pendingLogoData : existing.logo || '', contact, instagram, address: $('setupBusinessAddress').value.trim(), tradeLicense, bankName: $('setupBankName').value.trim(), accountName: $('setupAccountName').value.trim(), accountNumber: $('setupAccountNumber').value.trim(), upiId: $('setupUpiId').value.trim(), cryptoNetwork, cryptoAddress, upiQr: pendingQrData !== null ? pendingQrData : existing.upiQr || ''};
+  try {
+    const index = businessProfiles.findIndex(entry => entry.id === profile.id);
+    if (index >= 0) businessProfiles[index] = profile;
+    else businessProfiles.push(profile);
+    saveBusinesses();
+    localStorage.setItem('simplyBillProfile', JSON.stringify(profile));
+  }
+  catch { saveState('Logo or QR image is too large to save here — please choose a smaller one'); return; }
+  editingBusinessId = profile.id;
+  setActiveBusiness(profile.id); renderBusinessPickers(); $('setupDialog').close(); saveState('Business details saved privately');
 });
 initializeAccount();
