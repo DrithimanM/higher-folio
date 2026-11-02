@@ -138,6 +138,8 @@
 .archive-card, .account-card { width: min(560px, calc(100vw - 32px)); max-height: min(760px, calc(100dvh - 32px)); overflow: auto; padding: 28px; border: 1px solid var(--line); border-radius: 20px; background: var(--paper); color: var(--ink); box-shadow: 0 24px 80px rgba(27, 45, 35, .2); }
 dialog::backdrop { background: rgba(18, 31, 24, .48); backdrop-filter: blur(3px); }
 dialog { border: 0; padding: 0; background: transparent; }
+#setupDialog .setup-card { background: var(--paper); color: var(--ink); }
+#setupDialog::backdrop { background: rgba(18, 31, 24, .56); backdrop-filter: blur(4px); }
 .dialog-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .dialog-heading h2, .account-card h2 { margin: 2px 0 6px; font-size: 26px; line-height: 1.1; }
 .dialog-heading p:not(.eyebrow), .account-card > p:not(.eyebrow) { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
@@ -178,6 +180,13 @@ body.account-locked .app-shell { visibility: hidden; }
 .bookkeeping-next strong { color: #1b422d; }
 .bookkeeping-next p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
 .expense-form { max-width: 620px; padding: 20px; border: 1px solid #d9e4dc; border-radius: 16px; background: #fdfefc; }
+.customers-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 2px 0 18px; }
+.customers-heading h3 { margin: 0; color: #1f412e; font-size: 18px; }
+.customers-heading p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+.customers-heading .button { min-height: 44px; flex: 0 0 auto; }
+.customer-form { max-width: 620px; margin-bottom: 18px; padding: 20px; border: 1px solid #d9e4dc; border-radius: 16px; background: #fdfefc; }
+.customer-form label { display: block; margin-top: 14px; }
+.customer-form .button[type="submit"] { width: 100%; margin-top: 18px; }
 .expense-form-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-bottom: 8px; }
 .expense-form h3 { margin: 0; color: #1f412e; font-size: 18px; }
 .expense-form p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
@@ -231,8 +240,9 @@ body.account-locked .app-shell { visibility: hidden; }
   .archive-row-actions .button { width: 100%; }
   .templates { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .bookkeeping-panel { padding: 20px; border-radius: 16px; }
-  .bookkeeping-heading, .bookkeeping-next { align-items: stretch; flex-direction: column; }
+  .bookkeeping-heading, .bookkeeping-next, .customers-heading { align-items: stretch; flex-direction: column; }
   .bookkeeping-next .button { width: 100%; }
+  .customers-heading .button { width: 100%; }
   .expense-row, .customer-bookkeeping-row { align-items: stretch; flex-direction: column; }
   .expense-row > div:last-child { text-align: left; }
   .customer-bookkeeping-row .button { width: 100%; }

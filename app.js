@@ -324,19 +324,21 @@ function renderSavedCustomers(selectedId = '') {
   $('savedCustomer').innerHTML = `<option value="">New customer</option>${customers.map(customer => `<option value="${escapeHtml(customer.id)}">${escapeHtml(customer.name)}</option>`).join('')}`;
   $('savedCustomer').value = selectedId;
 }
-function rememberCurrentCustomer() {
-  const name = $('customerName').value.trim();
-  if (!name) return false;
-  const details = {name, contact: $('customerContact').value.trim(), address: $('customerAddress').value.trim()};
+function saveCustomerDetails(details, selectedId = '') {
+  const name = details.name.trim();
+  if (!name) return null;
   const customers = savedCustomers();
-  const selectedId = $('savedCustomer').value;
   const existingIndex = customers.findIndex(customer => customer.id === selectedId || customer.name.toLocaleLowerCase() === name.toLocaleLowerCase());
-  const customer = {...details, id: existingIndex >= 0 ? customers[existingIndex].id : `customer-${Date.now()}-${Math.random().toString(16).slice(2)}`};
+  const customer = {name, contact: details.contact.trim(), address: details.address.trim(), id: existingIndex >= 0 ? customers[existingIndex].id : `customer-${Date.now()}-${Math.random().toString(16).slice(2)}`};
   if (existingIndex >= 0) customers[existingIndex] = customer;
   else customers.unshift(customer);
-  localStorage.setItem(customerKey, JSON.stringify(customers.slice(0, 100)));
+  try { localStorage.setItem(customerKey, JSON.stringify(customers.slice(0, 100))); }
+  catch { return null; }
   renderSavedCustomers(customer.id);
-  return true;
+  return customer;
+}
+function rememberCurrentCustomer() {
+  return Boolean(saveCustomerDetails({name: $('customerName').value, contact: $('customerContact').value, address: $('customerAddress').value}, $('savedCustomer').value));
 }
 function fillCustomer(id) {
   const customer = savedCustomers().find(entry => entry.id === id);
@@ -385,7 +387,11 @@ function renderExpenses() {
 }
 function renderCustomerBookkeeping() {
   const customers = savedCustomers();
-  $('customerBookkeepingList').innerHTML = customers.length ? customers.map(customer => `<article class="customer-bookkeeping-row"><div><strong>${escapeHtml(customer.name)}</strong><small>${escapeHtml([customer.contact, customer.address].filter(Boolean).join(' · ') || 'No contact details saved')}</small></div><button class="button button-secondary" type="button" data-use-customer="${escapeHtml(customer.id)}">Use on a bill</button></article>`).join('') : '<p class="archive-empty">Save a customer on a bill and their details will appear here.</p>';
+  $('customerBookkeepingList').innerHTML = customers.length ? customers.map(customer => `<article class="customer-bookkeeping-row"><div><strong>${escapeHtml(customer.name)}</strong><small>${escapeHtml([customer.contact, customer.address].filter(Boolean).join(' · ') || 'No contact details saved')}</small></div><button class="button button-secondary" type="button" data-use-customer="${escapeHtml(customer.id)}">Use on a bill</button></article>`).join('') : '<p class="archive-empty">No customers saved yet. Add one here, or save one while making a bill.</p>';
+}
+function ensureCustomerWorkspace() {
+  if ($('customerQuickAdd')) return;
+  $('customersView').insertAdjacentHTML('afterbegin', `<div class="customers-heading" id="customerQuickAdd"><div><h3>Customers</h3><p>Save a customer once, then use their details on any new bill.</p></div><button class="button button-primary" id="addCustomerButton" type="button">+ Add customer</button></div><form class="customer-form" id="customerForm" hidden><div class="expense-form-heading"><div><h3>Add customer</h3><p>These details stay on this device and can be reused on your next bill.</p></div><button class="text-button" id="cancelCustomerButton" type="button">Cancel</button></div><label for="bookkeepingCustomerName">Customer name</label><input id="bookkeepingCustomerName" autocomplete="name" placeholder="e.g. Aisha Khan" required /><label for="bookkeepingCustomerContact">Email or phone <span class="optional">optional</span></label><input id="bookkeepingCustomerContact" autocomplete="email" placeholder="For your own reference" /><label for="bookkeepingCustomerAddress">Customer address <span class="optional">optional</span></label><textarea id="bookkeepingCustomerAddress" rows="2" autocomplete="street-address" placeholder="Building, street, city"></textarea><button class="button button-primary" type="submit">Save customer</button></form>`);
 }
 function setBookkeepingView(view) {
   bookkeepingView = view;
@@ -398,7 +404,7 @@ function setBookkeepingView(view) {
   });
   if (view === 'bills') renderArchive();
   if (view === 'expenses') { renderVendors(); renderExpenses(); }
-  if (view === 'customers') renderCustomerBookkeeping();
+  if (view === 'customers') { ensureCustomerWorkspace(); renderCustomerBookkeeping(); }
 }
 function renderArchive() {
   const records = savedRecords();
@@ -565,6 +571,21 @@ $('recordExpenseButton').addEventListener('click', () => { setBookkeepingView('e
 document.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => { archiveFilter = button.dataset.filter; renderArchive(); }));
 $('archiveList').addEventListener('click', event => { const button = event.target.closest('[data-load-bill]'); if (button) openSavedBill(button.dataset.loadBill); });
 $('customerBookkeepingList').addEventListener('click', event => { const button = event.target.closest('[data-use-customer]'); if (!button) return; selectAppTab('create'); renderSavedCustomers(button.dataset.useCustomer); fillCustomer(button.dataset.useCustomer); $('customerName').focus(); });
+$('customersView').addEventListener('click', event => {
+  if (event.target.closest('#addCustomerButton')) { $('customerForm').hidden = false; $('bookkeepingCustomerName').focus(); }
+  if (event.target.closest('#cancelCustomerButton')) { $('customerForm').reset(); $('customerForm').hidden = true; $('addCustomerButton').focus(); }
+});
+$('customersView').addEventListener('submit', event => {
+  if (event.target.id !== 'customerForm') return;
+  event.preventDefault();
+  const customer = saveCustomerDetails({name: $('bookkeepingCustomerName').value, contact: $('bookkeepingCustomerContact').value, address: $('bookkeepingCustomerAddress').value});
+  if (!customer) { saveState('Add a customer name, then try saving again'); $('bookkeepingCustomerName').focus(); return; }
+  $('customerForm').reset();
+  $('customerForm').hidden = true;
+  renderCustomerBookkeeping();
+  saveState(`${customer.name} is ready to use on a bill`);
+  $('addCustomerButton').focus();
+});
 $('expenseVendor').addEventListener('change', () => { const vendor = savedVendors().find(entry => entry.id === $('expenseVendor').value); if (vendor) $('expenseVendorName').value = vendor.name; });
 $('expenseForm').addEventListener('submit', event => {
   event.preventDefault();
