@@ -123,6 +123,7 @@ function render() {
   $('previewCustomerAddress').hidden = !payerAddress;
   $('previewCustomerAddress').textContent = payerAddress;
   $('previewDate').textContent = formatDate($('issueDate').value);
+  $('documentLabel').textContent = $('documentType').value.toUpperCase();
   const paid = $('paymentStatus').value === 'paid';
   const paymentVia = $('paymentVia').value;
   $('paymentMeta').hidden = !paid || !paymentVia;
@@ -151,7 +152,7 @@ function saveBill() {
   const totals = render();
   const records = JSON.parse(localStorage.getItem(appKey) || '[]');
   currentInvoice.julian = julianDay($('issueDate').value);
-  records.unshift({number: invoiceId(), createdAt: new Date().toISOString(), customer: $('customerName').value.trim(), currency: $('currency').value, total: totals.total, template, paymentStatus: $('paymentStatus').value, paymentVia: $('paymentVia').value});
+  records.unshift({number: invoiceId(), createdAt: new Date().toISOString(), customer: $('customerName').value.trim(), currency: $('currency').value, total: totals.total, template, documentType: $('documentType').value, paymentStatus: $('paymentStatus').value, paymentVia: $('paymentVia').value});
   localStorage.setItem(appKey, JSON.stringify(records.slice(0, 100)));
   currentInvoice.saved = true;
   nextSequence = currentInvoice.sequence + 1;
@@ -169,6 +170,24 @@ function addItem() {
 }
 
 function openPrint() { render(); document.title = `Higher-Folio-${invoiceId()}`; window.print(); }
+function downloadWordCopy() {
+  render();
+  const styleText = [...document.styleSheets].map(sheet => {
+    try { return [...sheet.cssRules].map(rule => rule.cssText).join('\n'); }
+    catch { return ''; }
+  }).join('\n');
+  const title = `${$('documentType').value} ${invoiceId()}`;
+  const documentHtml = `<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base href="${location.href}"><title>${escapeHtml(title)}</title><style>${styleText} body{padding:28px;background:#fff}.invoice{margin:0 auto;box-shadow:none}</style></head><body>${$('invoice').outerHTML}</body></html>`;
+  const file = new Blob([documentHtml], {type: 'application/msword'});
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(file);
+  link.download = `${$('documentType').value.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '')}-${invoiceId()}.doc`;
+  link.style.display = 'none';
+  document.body.append(link);
+  link.click();
+  setTimeout(() => { URL.revokeObjectURL(link.href); link.remove(); }, 1000);
+  saveState('Word copy saved — ready to share or edit');
+}
 async function copyMessage() {
   const customer = $('customerName').value.trim() || 'there';
   const numericTotal = $('grandTotal').textContent.trim();
@@ -181,6 +200,8 @@ function applyBusinessProfile(profile) {
   businessProfile = profile;
   $('businessName').textContent = profile.name || 'My Business';
   $('businessContact').textContent = [profile.contact, profile.instagram].filter(Boolean).join(' · ') || 'Thank you for your business';
+  $('businessAddress').hidden = !profile.address;
+  $('businessAddress').textContent = profile.address || '';
   $('businessLicense').hidden = !profile.tradeLicense;
   $('businessLicense').textContent = profile.tradeLicense ? `Trade licence no. ${profile.tradeLicense}` : '';
 }
@@ -194,6 +215,7 @@ function editBusiness() {
   $('setupBusiness').value = profile.name || '';
   $('setupContact').value = profile.contact || '';
   $('setupInstagram').value = profile.instagram || '';
+  $('setupBusinessAddress').value = profile.address || '';
   $('setupTradeLicense').value = profile.tradeLicense || '';
   $('setupBankName').value = profile.bankName || '';
   $('setupAccountName').value = profile.accountName || '';
@@ -208,6 +230,7 @@ function editBusiness() {
 
 document.querySelectorAll('input, select, textarea').forEach(field => field.addEventListener('input', render));
 $('currency').addEventListener('change', render);
+$('documentType').addEventListener('change', render);
 $('taxRegion').addEventListener('change', () => { $('indiaTaxOptions').hidden = $('taxRegion').value !== 'india'; $('uaeTaxOptions').hidden = $('taxRegion').value !== 'uae'; render(); });
 ['indiaSupply', 'indiaGstRate', 'uaeVatType'].forEach(id => $(id).addEventListener('change', render));
 $('paymentStatus').addEventListener('change', () => { updatePaymentControls(); updateSavedInvoice(); render(); });
@@ -217,6 +240,8 @@ $('moreDetailsButton').addEventListener('click', () => { const open = $('moreDet
 document.querySelectorAll('.template-card').forEach(button => button.addEventListener('click', () => { template = button.dataset.template; document.querySelectorAll('.template-card').forEach(card => { const selected = card === button; card.classList.toggle('selected', selected); card.setAttribute('aria-checked', String(selected)); }); $('invoice').className = `invoice template-${template}`; render(); }));
 $('billForm').addEventListener('submit', event => { event.preventDefault(); if (!$('customerName').value.trim() || !itemData().length) { saveState('Add a customer and at least one item first'); (!$('customerName').value.trim() ? $('customerName') : $('itemDescription')).focus(); return; } saveBill(); });
 $('pdfButton').addEventListener('click', openPrint);
+$('printButton').addEventListener('click', openPrint);
+$('wordButton').addEventListener('click', downloadWordCopy);
 $('mobilePdfButton').addEventListener('click', openPrint);
 $('copyMessageButton').addEventListener('click', copyMessage);
 $('newBillButton').addEventListener('click', () => { $('billForm').reset(); $('issueDate').value = today; $('additionalItems').innerHTML = ''; $('moreDetails').hidden = true; $('moreDetailsButton').setAttribute('aria-expanded', 'false'); $('indiaTaxOptions').hidden = true; $('uaeTaxOptions').hidden = true; currentInvoice = createInvoice(nextSequence); updatePaymentControls(); render(); $('customerName').focus(); });
@@ -248,7 +273,7 @@ $('saveSetup').addEventListener('click', () => {
   const contact = $('setupContact').value.trim();
   const instagram = $('setupInstagram').value.trim();
   const tradeLicense = $('setupTradeLicense').value.trim();
-  const profile = {name, contact, instagram, tradeLicense, bankName: $('setupBankName').value.trim(), accountName: $('setupAccountName').value.trim(), accountNumber: $('setupAccountNumber').value.trim(), upiId: $('setupUpiId').value.trim(), upiQr: pendingQrData !== null ? pendingQrData : businessProfile.upiQr || ''};
+  const profile = {name, contact, instagram, address: $('setupBusinessAddress').value.trim(), tradeLicense, bankName: $('setupBankName').value.trim(), accountName: $('setupAccountName').value.trim(), accountNumber: $('setupAccountNumber').value.trim(), upiId: $('setupUpiId').value.trim(), upiQr: pendingQrData !== null ? pendingQrData : businessProfile.upiQr || ''};
   try { localStorage.setItem('simplyBillProfile', JSON.stringify(profile)); }
   catch { saveState('QR image is too large to save here — please choose a smaller one'); return; }
   applyBusinessProfile(profile); render(); $('setupDialog').close(); saveState('Business and payment details saved privately');

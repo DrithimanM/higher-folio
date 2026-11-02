@@ -19,6 +19,7 @@
 .invoice-meta #paymentMeta { margin-top: 16px; }
 .invoice-meta #paymentMeta span { display: block; margin-bottom: 4px; }
 .seller #businessLicense { color: #53615e; font-size: 10px; font-weight: 650; }
+.seller #businessAddress { max-width: 220px; margin: 3px 0; color: #53615e; font-size: 10px; line-height: 1.35; white-space: pre-line; }
 .tax-helper { margin: 9px 0 0; color: var(--muted); font-size: 12px; }
 .invoice-payment-status { display: inline-block; margin-top: 8px; padding: 3px 7px; border-radius: 999px; font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
 .invoice-payment-status.is-due { background: #fff1c8; color: #755915; }
