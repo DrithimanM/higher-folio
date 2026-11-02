@@ -352,6 +352,7 @@ function selectAppTab(tab) {
   $('createPanel').hidden = !create;
   $('bookkeepingPanel').hidden = create;
   $('mobileActionBar').hidden = !create;
+  $('newBillButton').hidden = !create;
   $('createTab').classList.toggle('selected', create);
   $('bookkeepingTab').classList.toggle('selected', !create);
   $('createTab').setAttribute('aria-selected', String(create));

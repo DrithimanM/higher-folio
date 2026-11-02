@@ -25,6 +25,9 @@
 .invoice-payment-status.is-due { background: #fff1c8; color: #755915; }
 .invoice-payment-status.is-paid { background: #e1f1e8; color: #1d6344; }
 
+/* A component's layout rule must never override its semantic hidden state. */
+[hidden] { display: none !important; }
+
 .payment-settings { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
 .setup-section-title { margin: 0 0 4px; color: var(--ink); font-size: 14px; font-weight: 750; }
 .setup-helper { margin: 0 0 12px; color: var(--muted); font-size: 12px; line-height: 1.45; }
