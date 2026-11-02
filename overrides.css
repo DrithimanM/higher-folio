@@ -44,6 +44,32 @@
 .mobile-action-bar { display: none; }
 .business-button { min-width: 116px; }
 .business-label-mobile { display: none; }
+.templates { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.template-swatch.botanical { border-top-color: #3f6c51; background: linear-gradient(135deg, #edf4ed 0 48%, #fcfbf4 48%); }
+.template-swatch.editorial { border-top-color: #253c59; background: linear-gradient(90deg, #f8f6f1 0 68%, #d9e2ea 68%); }
+.template-swatch.rose { border-top-color: #a45b6c; background: linear-gradient(135deg, #fff5f5 0 50%, #f3dbe0 50%); }
+.template-swatch.midnight { border-top-color: #d5b56a; background: #1d2926; }
+.template-botanical { --accent: #3f6c51; background: #fdfdf8; }
+.template-botanical .seller-logo { border-radius: 50% 50% 50% 12%; background: #3f6c51; }
+.template-botanical .invoice-title p { color: #3f6c51; }
+.template-botanical .invoice-note { background: #eef4ed; }
+.template-editorial { --accent: #253c59; border-top: 7px solid #253c59; border-radius: 0; }
+.template-editorial .seller h2, .template-editorial .invoice-title strong { font-family: Georgia, serif; }
+.template-editorial .seller-logo { border-radius: 4px; background: #253c59; }
+.template-editorial .invoice-meta { border-bottom-color: #bdc7d3; }
+.template-rose { --accent: #a45b6c; background: #fffdfd; }
+.template-rose .seller-logo { border-radius: 50%; background: #a45b6c; }
+.template-rose .invoice-title p { color: #a45b6c; }
+.template-rose .invoice-note { background: #fff1f3; }
+.template-midnight { --accent: #d5b56a; background: #1d2926; color: #f8f4e9; border-radius: 8px; box-shadow: 0 18px 48px rgba(20, 34, 29, .22); }
+.template-midnight .seller-logo { background: #d5b56a; color: #1d2926; }
+.template-midnight .seller p, .template-midnight .invoice-meta p, .template-midnight .invoice-meta span, .template-midnight .invoice-header, .template-midnight footer { color: #c7d0c7; }
+.template-midnight .invoice-meta, .template-midnight .invoice-header, .template-midnight .invoice-totals, .template-midnight .invoice footer { border-color: #46544e; }
+.template-midnight .grand-total { border-color: #65776e; }
+.template-midnight .invoice-note { background: #2c3b35; color: #edf3ed; }
+.template-midnight .invoice-payment-details { border-color: #53685d; background: #27372f; }
+.template-midnight .payment-details-copy p:not(.payment-details-title), .template-midnight .payment-details-title { color: #eef3e9; }
+.template-midnight .payment-details-copy .crypto-warning { color: #f1ca86; }
 .archive-button { min-width: 104px; }
 .archive-card, .account-card { width: min(560px, calc(100vw - 32px)); max-height: min(760px, calc(100dvh - 32px)); overflow: auto; padding: 28px; border: 1px solid var(--line); border-radius: 20px; background: var(--paper); color: var(--ink); box-shadow: 0 24px 80px rgba(27, 45, 35, .2); }
 dialog::backdrop { background: rgba(18, 31, 24, .48); backdrop-filter: blur(3px); }
@@ -119,4 +145,5 @@ body.account-locked .app-shell { visibility: hidden; }
   .archive-row { grid-template-columns: minmax(0, 1fr); }
   .archive-row-actions { grid-template-columns: 1fr 1fr; justify-items: stretch; }
   .archive-row-actions .button { width: 100%; }
+  .templates { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
