@@ -5,6 +5,8 @@ const accountSessionKey = 'higherFolioUnlocked-v1';
 const customerKey = 'higherFolioCustomers-v1';
 const businessesKey = 'higherFolioBusinesses-v1';
 const activeBusinessKey = 'higherFolioActiveBusiness-v1';
+const expensesKey = 'higherFolioExpenses-v1';
+const vendorsKey = 'higherFolioVendors-v1';
 let template = 'soft';
 let nextSequence = Number(localStorage.getItem('higherFolioNext') || localStorage.getItem('simplyBillNext') || '1');
 let businessProfile = {};
@@ -13,12 +15,14 @@ let pendingLogoData = null;
 let archiveFilter = 'all';
 let businessProfiles = [];
 let editingBusinessId = null;
+let bookkeepingView = 'overview';
 
 const symbol = (currency) => currency === 'INR' ? '₹ ' : '<img class="dirham-icon" src="assets/uae-dirham-symbol.png" alt="Dirham" />';
 const amount = (number) => `${symbol($('currency').value)}${Number(number || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 const localDate = new Date();
 const today = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`;
 $('issueDate').value = today;
+$('expenseDate').value = today;
 
 const threeDigits = (value) => String(value).padStart(3, '0').slice(-3);
 const randomLead = () => Math.floor(100 + Math.random() * 900);
@@ -271,7 +275,7 @@ function setActiveBusiness(id) {
   if (!profile) return;
   localStorage.setItem(activeBusinessKey, profile.id);
   editingBusinessId = profile.id;
-  applyBusinessProfile(profile); renderBusinessPickers(); render();
+  applyBusinessProfile(profile); renderBusinessPickers(); render(); renderArchive();
 }
 function fillBusinessEditor(profile = {}) {
   $('setupBusiness').value = profile.name || '';
@@ -352,7 +356,7 @@ function selectAppTab(tab) {
   $('bookkeepingTab').classList.toggle('selected', !create);
   $('createTab').setAttribute('aria-selected', String(create));
   $('bookkeepingTab').setAttribute('aria-selected', String(!create));
-  if (!create) renderArchive();
+  if (!create) { renderArchive(); setBookkeepingView(bookkeepingView); }
 }
 
 function formatArchiveAmount(currency, value) { return currency === 'INR' ? `₹${Number(value || 0).toFixed(2)}` : `AED ${Number(value || 0).toFixed(2)}`; }
@@ -360,12 +364,49 @@ function savedRecords() {
   try { return JSON.parse(localStorage.getItem(appKey) || '[]'); }
   catch { return []; }
 }
+function savedExpenses() {
+  try { return JSON.parse(localStorage.getItem(expensesKey) || '[]'); }
+  catch { return []; }
+}
+function savedVendors() {
+  try { return JSON.parse(localStorage.getItem(vendorsKey) || '[]'); }
+  catch { return []; }
+}
+function activeExpenses() { return savedExpenses().filter(expense => expense.businessId === businessProfile.id); }
+function renderVendors(selectedId = '') {
+  const vendors = savedVendors().filter(vendor => vendor.businessId === businessProfile.id);
+  $('expenseVendor').innerHTML = `<option value="">New business or vendor</option>${vendors.map(vendor => `<option value="${escapeHtml(vendor.id)}">${escapeHtml(vendor.name)}</option>`).join('')}`;
+  $('expenseVendor').value = selectedId;
+}
+function renderExpenses() {
+  const expenses = activeExpenses();
+  $('expenseList').innerHTML = expenses.length ? expenses.map(expense => `<article class="expense-row"><div><strong>${escapeHtml(expense.vendor)}</strong><small>${formatDate(expense.date)}${expense.note ? ` · ${escapeHtml(expense.note)}` : ''}</small></div><div><strong>− ${formatArchiveAmount(expense.currency, expense.amount)}</strong><small>${escapeHtml(expense.method || 'Payment method not specified')}</small></div></article>`).join('') : '<p class="archive-empty">No outgoing payments recorded for this business yet.</p>';
+}
+function renderCustomerBookkeeping() {
+  const customers = savedCustomers();
+  $('customerBookkeepingList').innerHTML = customers.length ? customers.map(customer => `<article class="customer-bookkeeping-row"><div><strong>${escapeHtml(customer.name)}</strong><small>${escapeHtml([customer.contact, customer.address].filter(Boolean).join(' · ') || 'No contact details saved')}</small></div><button class="button button-secondary" type="button" data-use-customer="${escapeHtml(customer.id)}">Use on a bill</button></article>`).join('') : '<p class="archive-empty">Save a customer on a bill and their details will appear here.</p>';
+}
+function setBookkeepingView(view) {
+  bookkeepingView = view;
+  ['overview', 'bills', 'expenses', 'customers'].forEach(name => {
+    const selected = name === view;
+    $(`${name}View`).hidden = !selected;
+    const button = document.querySelector(`[data-bookkeeping-view="${name}"]`);
+    button.classList.toggle('selected', selected);
+    button.setAttribute('aria-selected', String(selected));
+  });
+  if (view === 'bills') renderArchive();
+  if (view === 'expenses') { renderVendors(); renderExpenses(); }
+  if (view === 'customers') renderCustomerBookkeeping();
+}
 function renderArchive() {
   const records = savedRecords();
   const filtered = archiveFilter === 'all' ? records : records.filter(record => record.paymentStatus === archiveFilter);
   const dueTotals = records.filter(record => record.paymentStatus !== 'paid').reduce((totals, record) => ({...totals, [record.currency]: (totals[record.currency] || 0) + Number(record.total || 0)}), {});
   const dueValue = Object.entries(dueTotals).map(([currency, total]) => formatArchiveAmount(currency, total)).join(' · ') || '—';
-  $('archiveSummary').innerHTML = `<div><span>Saved</span><strong>${records.length}</strong></div><div><span>Due</span><strong>${records.filter(record => record.paymentStatus !== 'paid').length}</strong></div><div><span>Due value</span><strong>${dueValue}</strong></div>`;
+  const expenseTotals = activeExpenses().reduce((totals, expense) => ({...totals, [expense.currency]: (totals[expense.currency] || 0) + Number(expense.amount || 0)}), {});
+  const expenseValue = Object.entries(expenseTotals).map(([currency, total]) => formatArchiveAmount(currency, total)).join(' · ') || '—';
+  $('archiveSummary').innerHTML = `<div><span>Bills saved</span><strong>${records.length}</strong></div><div><span>Payments due</span><strong>${records.filter(record => record.paymentStatus !== 'paid').length}</strong></div><div><span>Money due</span><strong>${dueValue}</strong></div><div><span>Paid out</span><strong>${expenseValue}</strong></div>`;
   $('bookkeepingCount').hidden = records.length === 0;
   $('bookkeepingCount').textContent = records.length || '';
   document.querySelectorAll('[data-filter]').forEach(button => button.classList.toggle('selected', button.dataset.filter === archiveFilter));
@@ -518,9 +559,27 @@ $('expandPreview').addEventListener('click', openPrint);
 $('archiveButton').addEventListener('click', () => { archiveFilter = 'all'; selectAppTab('bookkeeping'); });
 $('createTab').addEventListener('click', () => selectAppTab('create'));
 $('bookkeepingTab').addEventListener('click', () => selectAppTab('bookkeeping'));
-$('newBookkeepingBill').addEventListener('click', () => { selectAppTab('create'); $('newBillButton').click(); });
+document.querySelectorAll('[data-bookkeeping-view]').forEach(button => button.addEventListener('click', () => setBookkeepingView(button.dataset.bookkeepingView)));
+$('recordExpenseButton').addEventListener('click', () => { setBookkeepingView('expenses'); $('expenseVendorName').focus(); });
 document.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => { archiveFilter = button.dataset.filter; renderArchive(); }));
 $('archiveList').addEventListener('click', event => { const button = event.target.closest('[data-load-bill]'); if (button) openSavedBill(button.dataset.loadBill); });
+$('customerBookkeepingList').addEventListener('click', event => { const button = event.target.closest('[data-use-customer]'); if (!button) return; selectAppTab('create'); renderSavedCustomers(button.dataset.useCustomer); fillCustomer(button.dataset.useCustomer); $('customerName').focus(); });
+$('expenseVendor').addEventListener('change', () => { const vendor = savedVendors().find(entry => entry.id === $('expenseVendor').value); if (vendor) $('expenseVendorName').value = vendor.name; });
+$('expenseForm').addEventListener('submit', event => {
+  event.preventDefault();
+  const vendor = $('expenseVendorName').value.trim();
+  const amountValue = Number($('expenseAmount').value);
+  if (!vendor || !(amountValue > 0)) { saveState('Add the business paid to and a payment amount'); (!vendor ? $('expenseVendorName') : $('expenseAmount')).focus(); return; }
+  const vendors = savedVendors();
+  const existing = vendors.find(entry => entry.businessId === businessProfile.id && entry.name.toLocaleLowerCase() === vendor.toLocaleLowerCase());
+  const vendorId = existing?.id || `vendor-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const expense = {id: `expense-${Date.now()}-${Math.random().toString(16).slice(2)}`, businessId: businessProfile.id, vendor, vendorId, date: $('expenseDate').value || today, currency: $('expenseCurrency').value, amount: amountValue, method: $('expenseMethod').value, note: $('expenseNote').value.trim(), createdAt: new Date().toISOString()};
+  try {
+    if (!existing) { vendors.unshift({id: vendorId, businessId: businessProfile.id, name: vendor}); localStorage.setItem(vendorsKey, JSON.stringify(vendors.slice(0, 100))); }
+    const expenses = savedExpenses(); expenses.unshift(expense); localStorage.setItem(expensesKey, JSON.stringify(expenses.slice(0, 500)));
+  } catch { saveState('This outgoing payment could not be saved on this browser'); return; }
+  $('expenseForm').reset(); $('expenseDate').value = today; $('expenseCurrency').value = 'AED'; renderVendors(); renderExpenses(); renderArchive(); saveState('Outgoing payment saved privately');
+});
 $('savedCustomer').addEventListener('change', () => fillCustomer($('savedCustomer').value));
 $('saveCustomerButton').addEventListener('click', () => { if (rememberCurrentCustomer()) saveState('Customer details saved for the next bill'); else { saveState('Add the customer name before saving'); $('customerName').focus(); } });
 $('accountForm').addEventListener('submit', handleAccountSubmit);

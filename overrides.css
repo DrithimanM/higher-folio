@@ -139,7 +139,7 @@ dialog { border: 0; padding: 0; background: transparent; }
 .dialog-heading h2, .account-card h2 { margin: 2px 0 6px; font-size: 26px; line-height: 1.1; }
 .dialog-heading p:not(.eyebrow), .account-card > p:not(.eyebrow) { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
 .dialog-heading .icon-button { flex: 0 0 auto; font-size: 22px; }
-.archive-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 22px 0 14px; }
+.archive-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 22px 0 14px; }
 .archive-summary div { padding: 12px; border: 1px solid #d7dfd7; border-radius: 12px; background: #f6f9f5; }
 .archive-summary span { display: block; color: #607065; font-size: 10px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
 .archive-summary strong { display: block; margin-top: 4px; color: #193f2b; font-size: 17px; }
@@ -168,6 +168,23 @@ body.account-locked .app-shell { visibility: hidden; }
 .business-settings-card small { display: block; margin-top: 3px; color: #5d7567; font-size: 11px; line-height: 1.3; }
 .business-settings-card > span:last-child { position: absolute; right: 16px; font-size: 27px; font-weight: 400; line-height: .7; }
 .business-settings-card:focus-visible { outline: 3px solid rgba(45, 110, 79, .32); outline-offset: 3px; }
+.bookkeeping-tools { display: flex; gap: 8px; margin: 22px 0 18px; overflow-x: auto; padding-bottom: 2px; }
+.bookkeeping-tool { min-height: 40px; flex: 0 0 auto; padding: 0 13px; border: 1px solid #d8e2da; border-radius: 10px; background: #fff; color: #476254; font: inherit; font-size: 13px; font-weight: 750; cursor: pointer; }
+.bookkeeping-tool.selected { border-color: #214b45; background: #214b45; color: #fff; }
+.bookkeeping-next { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px; border: 1px solid #d9e4dc; border-radius: 14px; background: #f7faf7; }
+.bookkeeping-next strong { color: #1b422d; }
+.bookkeeping-next p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+.expense-form { max-width: 620px; padding: 20px; border: 1px solid #d9e4dc; border-radius: 16px; background: #fdfefc; }
+.expense-form-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-bottom: 8px; }
+.expense-form h3 { margin: 0; color: #1f412e; font-size: 18px; }
+.expense-form p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+.expense-form .button { width: 100%; margin-top: 18px; }
+.expense-list, .customer-bookkeeping-list { display: grid; gap: 10px; margin-top: 18px; }
+.expense-row, .customer-bookkeeping-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px; border: 1px solid #dce4de; border-radius: 13px; background: #fff; }
+.expense-row strong, .expense-row small, .customer-bookkeeping-row strong, .customer-bookkeeping-row small { display: block; }
+.expense-row small, .customer-bookkeeping-row small { margin-top: 4px; color: var(--muted); font-size: 12px; }
+.expense-row > div:last-child { text-align: right; }
+.customer-bookkeeping-row .button { min-height: 40px; flex: 0 0 auto; }
 
 @media (max-width: 700px) {
   body { padding-bottom: 82px; }
@@ -203,10 +220,17 @@ body.account-locked .app-shell { visibility: hidden; }
   .mobile-action-bar .button { width: 100%; min-height: 52px; padding-right: 10px; padding-left: 10px; font-size: 13px; }
   .archive-card, .account-card { width: min(100vw - 20px, 560px); padding: 22px 18px; border-radius: 18px; }
   .archive-summary { gap: 6px; }
+  .archive-summary { grid-template-columns: repeat(2, 1fr); }
   .archive-summary div { padding: 10px 8px; }
   .archive-summary strong { font-size: 15px; }
   .archive-row { grid-template-columns: minmax(0, 1fr); }
   .archive-row-actions { grid-template-columns: 1fr 1fr; justify-items: stretch; }
   .archive-row-actions .button { width: 100%; }
   .templates { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bookkeeping-panel { padding: 20px; border-radius: 16px; }
+  .bookkeeping-heading, .bookkeeping-next { align-items: stretch; flex-direction: column; }
+  .bookkeeping-next .button { width: 100%; }
+  .expense-row, .customer-bookkeeping-row { align-items: stretch; flex-direction: column; }
+  .expense-row > div:last-child { text-align: left; }
+  .customer-bookkeeping-row .button { width: 100%; }
 }
