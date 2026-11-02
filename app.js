@@ -88,19 +88,30 @@ function makeUpiQr(total) {
 
 function renderPaymentDetails(paid, total) {
   const hasBankDetails = Boolean(businessProfile.bankName || businessProfile.accountName || businessProfile.accountNumber || businessProfile.upiId);
-  const hasPaymentDetails = hasBankDetails || Boolean(businessProfile.upiQr);
+  const hasCryptoDetails = Boolean(businessProfile.cryptoAddress);
+  const hasPaymentDetails = hasBankDetails || hasCryptoDetails || Boolean(businessProfile.upiQr);
   $('paymentDetails').hidden = paid || !hasPaymentDetails;
-  if (paid || !hasPaymentDetails) return;
+  if (paid || !hasPaymentDetails) {
+    $('paymentCryptoNetwork').hidden = true;
+    $('paymentCryptoNetwork').textContent = '';
+    $('paymentCryptoAddress').hidden = true;
+    $('paymentCryptoAddress').textContent = '';
+    $('cryptoWarning').hidden = true;
+    return;
+  }
   const details = [
     ['paymentBankName', businessProfile.bankName, 'Bank: '],
     ['paymentAccountName', businessProfile.accountName, 'Account name: '],
     ['paymentAccountNumber', businessProfile.accountNumber, 'Account / IBAN: '],
-    ['paymentUpiId', businessProfile.upiId, 'UPI ID: ']
+    ['paymentUpiId', businessProfile.upiId, 'UPI ID: '],
+    ['paymentCryptoNetwork', businessProfile.cryptoNetwork, 'Crypto network: '],
+    ['paymentCryptoAddress', businessProfile.cryptoAddress, 'Crypto wallet: ']
   ];
   details.forEach(([id, value, label]) => {
     $(id).hidden = !value;
     $(id).textContent = value ? `${label}${value}` : '';
   });
+  $('cryptoWarning').hidden = !hasCryptoDetails;
   const generatedQr = makeUpiQr(total);
   const qr = generatedQr || businessProfile.upiQr || '';
   $('paymentQr').hidden = !qr;
@@ -221,6 +232,8 @@ function editBusiness() {
   $('setupAccountName').value = profile.accountName || '';
   $('setupAccountNumber').value = profile.accountNumber || '';
   $('setupUpiId').value = profile.upiId || '';
+  $('setupCryptoNetwork').value = profile.cryptoNetwork || '';
+  $('setupCryptoAddress').value = profile.cryptoAddress || '';
   $('setupQr').value = '';
   pendingQrData = null;
   $('qrFileName').textContent = profile.upiQr ? 'A QR image is saved on this device. Choose another image to replace it.' : 'Choose a small QR image (up to 750 KB). It stays only on this device.';
@@ -273,7 +286,10 @@ $('saveSetup').addEventListener('click', () => {
   const contact = $('setupContact').value.trim();
   const instagram = $('setupInstagram').value.trim();
   const tradeLicense = $('setupTradeLicense').value.trim();
-  const profile = {name, contact, instagram, address: $('setupBusinessAddress').value.trim(), tradeLicense, bankName: $('setupBankName').value.trim(), accountName: $('setupAccountName').value.trim(), accountNumber: $('setupAccountNumber').value.trim(), upiId: $('setupUpiId').value.trim(), upiQr: pendingQrData !== null ? pendingQrData : businessProfile.upiQr || ''};
+  const cryptoNetwork = $('setupCryptoNetwork').value;
+  const cryptoAddress = $('setupCryptoAddress').value.trim();
+  if (cryptoAddress && !cryptoNetwork) { saveState('Choose the crypto network before saving the wallet address'); $('setupCryptoNetwork').focus(); return; }
+  const profile = {name, contact, instagram, address: $('setupBusinessAddress').value.trim(), tradeLicense, bankName: $('setupBankName').value.trim(), accountName: $('setupAccountName').value.trim(), accountNumber: $('setupAccountNumber').value.trim(), upiId: $('setupUpiId').value.trim(), cryptoNetwork, cryptoAddress, upiQr: pendingQrData !== null ? pendingQrData : businessProfile.upiQr || ''};
   try { localStorage.setItem('simplyBillProfile', JSON.stringify(profile)); }
   catch { saveState('QR image is too large to save here — please choose a smaller one'); return; }
   applyBusinessProfile(profile); render(); $('setupDialog').close(); saveState('Business and payment details saved privately');

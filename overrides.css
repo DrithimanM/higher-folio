@@ -34,6 +34,8 @@
 .payment-details-copy { min-width: 0; }
 .payment-details-title { margin: 0 0 8px; color: #35614d; font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
 .payment-details-copy p:not(.payment-details-title) { margin: 3px 0; color: #31423a; font-size: 11px; line-height: 1.35; overflow-wrap: anywhere; }
+.payment-details-copy .crypto-warning, .crypto-setup-warning { color: #80552b; font-weight: 650; }
+.payment-details-copy .crypto-warning { margin-top: 8px; }
 .payment-qr { flex: 0 0 auto; margin: 0; text-align: center; }
 .payment-qr img { display: block; width: 88px; height: 88px; padding: 4px; border: 1px solid #c6d1c8; border-radius: 7px; background: #fff; object-fit: contain; }
 .payment-qr figcaption { margin-top: 5px; color: #53615e; font-size: 8px; font-weight: 650; }
