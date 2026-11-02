@@ -44,6 +44,37 @@
 .mobile-action-bar { display: none; }
 .business-button { min-width: 116px; }
 .business-label-mobile { display: none; }
+.archive-button { min-width: 104px; }
+.archive-card, .account-card { width: min(560px, calc(100vw - 32px)); max-height: min(760px, calc(100dvh - 32px)); overflow: auto; padding: 28px; border: 1px solid var(--line); border-radius: 20px; background: var(--paper); color: var(--ink); box-shadow: 0 24px 80px rgba(27, 45, 35, .2); }
+dialog::backdrop { background: rgba(18, 31, 24, .48); backdrop-filter: blur(3px); }
+dialog { border: 0; padding: 0; background: transparent; }
+.dialog-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.dialog-heading h2, .account-card h2 { margin: 2px 0 6px; font-size: 26px; line-height: 1.1; }
+.dialog-heading p:not(.eyebrow), .account-card > p:not(.eyebrow) { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
+.dialog-heading .icon-button { flex: 0 0 auto; font-size: 22px; }
+.archive-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 22px 0 14px; }
+.archive-summary div { padding: 12px; border: 1px solid #d7dfd7; border-radius: 12px; background: #f6f9f5; }
+.archive-summary span { display: block; color: #607065; font-size: 10px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+.archive-summary strong { display: block; margin-top: 4px; color: #193f2b; font-size: 17px; }
+.archive-filters { display: flex; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.filter-button { min-height: 36px; padding: 7px 12px; border: 1px solid #cddbd0; border-radius: 999px; background: #fff; color: #345243; font-size: 12px; font-weight: 700; }
+.filter-button.selected { border-color: #2d6e4f; background: #2d6e4f; color: #fff; }
+.archive-list { display: grid; gap: 10px; margin: 14px 0; }
+.archive-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 13px; border: 1px solid #d7dfd7; border-radius: 13px; background: #fff; }
+.archive-row strong, .archive-row small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.archive-row strong { color: #1b3527; font-size: 14px; }
+.archive-row small { margin-top: 4px; color: #69766d; font-size: 12px; }
+.archive-row .invoice-payment-status { margin-top: 6px; }
+.archive-row-actions { display: grid; gap: 6px; justify-items: end; }
+.archive-row-actions strong { font-size: 14px; }
+.archive-empty { padding: 26px 14px; color: var(--muted); text-align: center; }
+.archive-helper, .account-helper { margin: 14px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.account-card { width: min(440px, calc(100vw - 32px)); }
+.account-card label { display: block; margin-top: 16px; color: var(--ink); font-size: 13px; font-weight: 700; }
+.account-card input { width: 100%; min-height: 46px; margin-top: 7px; }
+.account-card .button { width: 100%; min-height: 48px; margin-top: 18px; }
+.account-error { margin-top: 12px !important; color: #a73d36 !important; font-weight: 700; }
+body.account-locked .app-shell { visibility: hidden; }
 .business-settings-card { position: relative; display: flex; width: 100%; min-height: 64px; align-items: center; justify-content: center; gap: 16px; margin: 4px 0 18px; padding: 12px 48px; border: 1px solid #cddbd0; border-radius: 14px; background: #eff5f0; color: #1d5138; text-align: center; box-shadow: 0 1px 0 rgba(24, 61, 43, .05); }
 .business-settings-card span:first-child { min-width: 0; }
 .business-settings-card strong { display: block; font-size: 14px; line-height: 1.25; }
@@ -57,6 +88,8 @@
   .welcome-copy { font-size: 16px; }
   .workspace { gap: 18px; }
   .business-button { display: inline-flex; min-width: 78px; padding-right: 9px; padding-left: 9px; font-size: 12px; }
+  .archive-button { min-width: 0; padding-right: 9px; padding-left: 9px; font-size: 0; }
+  .archive-button::after { content: 'Bills'; font-size: 12px; }
   .business-label-desktop { display: none; }
   .business-label-mobile { display: inline; }
   .editor { border-radius: 16px; }
@@ -79,4 +112,11 @@
     backdrop-filter: blur(12px);
   }
   .mobile-action-bar .button { width: 100%; min-height: 52px; padding-right: 10px; padding-left: 10px; font-size: 13px; }
+  .archive-card, .account-card { width: min(100vw - 20px, 560px); padding: 22px 18px; border-radius: 18px; }
+  .archive-summary { gap: 6px; }
+  .archive-summary div { padding: 10px 8px; }
+  .archive-summary strong { font-size: 15px; }
+  .archive-row { grid-template-columns: minmax(0, 1fr); }
+  .archive-row-actions { grid-template-columns: 1fr 1fr; justify-items: stretch; }
+  .archive-row-actions .button { width: 100%; }
 }

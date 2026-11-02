@@ -1,9 +1,12 @@
 const $ = (id) => document.getElementById(id);
 const appKey = 'simply-bill-v1';
+const accountKey = 'higherFolioAccount-v1';
+const accountSessionKey = 'higherFolioUnlocked-v1';
 let template = 'soft';
 let nextSequence = Number(localStorage.getItem('higherFolioNext') || localStorage.getItem('simplyBillNext') || '1');
 let businessProfile = {};
 let pendingQrData = null;
+let archiveFilter = 'all';
 
 const symbol = (currency) => currency === 'INR' ? '₹ ' : '<img class="dirham-icon" src="assets/uae-dirham-symbol.png" alt="Dirham" />';
 const amount = (number) => `${symbol($('currency').value)}${Number(number || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
@@ -53,7 +56,8 @@ function updatePaymentControls() {
 function updateSavedInvoice() {
   if (!currentInvoice.saved) return;
   const records = JSON.parse(localStorage.getItem(appKey) || '[]');
-  localStorage.setItem(appKey, JSON.stringify(records.map(record => record.number === invoiceId() ? {...record, paymentStatus: $('paymentStatus').value, paymentVia: $('paymentVia').value} : record)));
+  const totals = render();
+  localStorage.setItem(appKey, JSON.stringify(records.map(record => record.number === invoiceId() ? {...record, customer: $('customerName').value.trim(), currency: $('currency').value, total: totals.total, template, documentType: $('documentType').value, paymentStatus: $('paymentStatus').value, paymentVia: $('paymentVia').value, snapshot: billSnapshot()} : record)));
 }
 
 function makeUpiQr(total) {
@@ -158,12 +162,21 @@ function render() {
 
 function escapeHtml(value) { const div = document.createElement('div'); div.textContent = value; return div.innerHTML; }
 function saveState(message = 'Saved privately on this laptop') { $('saveState').textContent = message; clearTimeout(saveState.timer); saveState.timer = setTimeout(() => $('saveState').textContent = 'Saved privately on this laptop', 2400); }
+function billSnapshot() {
+  return {
+    customerName: $('customerName').value, customerContact: $('customerContact').value, customerAddress: $('customerAddress').value,
+    items: itemData(), currency: $('currency').value, issueDate: $('issueDate').value, documentType: $('documentType').value,
+    paymentStatus: $('paymentStatus').value, paymentVia: $('paymentVia').value, taxRegion: $('taxRegion').value,
+    indiaSupply: $('indiaSupply').value, indiaGstRate: $('indiaGstRate').value, uaeVatType: $('uaeVatType').value,
+    discount: $('discount').value, notes: $('notes').value, template
+  };
+}
 function saveBill() {
   if (currentInvoice.saved) { updateSavedInvoice(); saveState('Bill updated — ready to share'); return; }
   const totals = render();
   const records = JSON.parse(localStorage.getItem(appKey) || '[]');
   currentInvoice.julian = julianDay($('issueDate').value);
-  records.unshift({number: invoiceId(), createdAt: new Date().toISOString(), customer: $('customerName').value.trim(), currency: $('currency').value, total: totals.total, template, documentType: $('documentType').value, paymentStatus: $('paymentStatus').value, paymentVia: $('paymentVia').value});
+  records.unshift({number: invoiceId(), invoice: {...currentInvoice}, createdAt: new Date().toISOString(), customer: $('customerName').value.trim(), currency: $('currency').value, total: totals.total, template, documentType: $('documentType').value, paymentStatus: $('paymentStatus').value, paymentVia: $('paymentVia').value, snapshot: billSnapshot()});
   localStorage.setItem(appKey, JSON.stringify(records.slice(0, 100)));
   currentInvoice.saved = true;
   nextSequence = currentInvoice.sequence + 1;
@@ -241,6 +254,133 @@ function editBusiness() {
   $('setupDialog').showModal();
 }
 
+function formatArchiveAmount(currency, value) { return currency === 'INR' ? `₹${Number(value || 0).toFixed(2)}` : `AED ${Number(value || 0).toFixed(2)}`; }
+function savedRecords() {
+  try { return JSON.parse(localStorage.getItem(appKey) || '[]'); }
+  catch { return []; }
+}
+function renderArchive() {
+  const records = savedRecords();
+  const filtered = archiveFilter === 'all' ? records : records.filter(record => record.paymentStatus === archiveFilter);
+  const dueTotals = records.filter(record => record.paymentStatus !== 'paid').reduce((totals, record) => ({...totals, [record.currency]: (totals[record.currency] || 0) + Number(record.total || 0)}), {});
+  const dueValue = Object.entries(dueTotals).map(([currency, total]) => formatArchiveAmount(currency, total)).join(' · ') || '—';
+  $('archiveSummary').innerHTML = `<div><span>Saved</span><strong>${records.length}</strong></div><div><span>Due</span><strong>${records.filter(record => record.paymentStatus !== 'paid').length}</strong></div><div><span>Due value</span><strong>${dueValue}</strong></div>`;
+  document.querySelectorAll('[data-filter]').forEach(button => button.classList.toggle('selected', button.dataset.filter === archiveFilter));
+  $('archiveList').innerHTML = filtered.length ? filtered.map(record => `<article class="archive-row"><div><strong>${escapeHtml(record.customer || 'Customer')}</strong><small>${escapeHtml(record.documentType || 'Bill')} · ${escapeHtml(record.number)} · ${formatDate(record.snapshot?.issueDate || record.createdAt?.slice(0, 10))}</small><span class="invoice-payment-status ${record.paymentStatus === 'paid' ? 'is-paid' : 'is-due'}">${record.paymentStatus === 'paid' ? 'Paid' : 'Payment due'}</span></div><div class="archive-row-actions"><strong>${formatArchiveAmount(record.currency, record.total)}</strong><button class="button button-secondary" type="button" data-load-bill="${escapeHtml(record.number)}">Open bill</button></div></article>`).join('') : '<p class="archive-empty">No saved bills here yet. Save a completed bill and it will appear here.</p>';
+}
+function restoreItems(items) {
+  $('additionalItems').innerHTML = '';
+  const rows = items?.length ? items : [{description: '', amount: ''}];
+  $('itemDescription').value = rows[0].description || '';
+  $('itemAmount').value = rows[0].amount || '';
+  rows.slice(1).forEach(item => {
+    addItem();
+    const row = $('additionalItems').lastElementChild;
+    row.querySelector('input:first-child').value = item.description || '';
+    row.querySelector('input[type="number"]').value = item.amount || '';
+  });
+}
+function setTemplate(value) {
+  template = value || 'soft';
+  document.querySelectorAll('.template-card').forEach(card => {
+    const selected = card.dataset.template === template;
+    card.classList.toggle('selected', selected);
+    card.setAttribute('aria-checked', String(selected));
+  });
+  $('invoice').className = `invoice template-${template}`;
+}
+function openSavedBill(number) {
+  const record = savedRecords().find(entry => entry.number === number);
+  if (!record) { saveState('That saved bill is no longer available'); return; }
+  const data = record.snapshot;
+  if (!data) { saveState('This older bill can be viewed in the archive, but cannot be reopened'); return; }
+  $('customerName').value = data.customerName || '';
+  $('customerContact').value = data.customerContact || '';
+  $('customerAddress').value = data.customerAddress || '';
+  $('currency').value = data.currency || 'AED';
+  $('issueDate').value = data.issueDate || today;
+  $('documentType').value = data.documentType || 'Bill';
+  $('paymentStatus').value = data.paymentStatus || 'due';
+  $('paymentVia').value = data.paymentVia || '';
+  $('taxRegion').value = data.taxRegion || 'none';
+  $('indiaSupply').value = data.indiaSupply || 'local';
+  $('indiaGstRate').value = data.indiaGstRate || '18';
+  $('uaeVatType').value = data.uaeVatType || 'standard';
+  $('discount').value = data.discount || '';
+  $('notes').value = data.notes || '';
+  $('indiaTaxOptions').hidden = $('taxRegion').value !== 'india';
+  $('uaeTaxOptions').hidden = $('taxRegion').value !== 'uae';
+  restoreItems(data.items);
+  setTemplate(data.template);
+  currentInvoice = record.invoice ? {...record.invoice, saved: true} : {...createInvoice(nextSequence), saved: true};
+  updatePaymentControls(); render(); $('archiveDialog').close(); saveState(`Opened bill ${record.number}`);
+}
+
+function randomSalt() {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+}
+function accountRecord() {
+  try { return JSON.parse(localStorage.getItem(accountKey) || 'null'); }
+  catch { return null; }
+}
+function configureAccountDialog(existing) {
+  $('accountForm').dataset.mode = existing ? 'unlock' : 'create';
+  $('accountTitle').textContent = existing ? `Welcome back${existing.name ? `, ${existing.name}` : ''}` : 'Set up your private account';
+  $('accountIntro').textContent = existing ? 'Enter your password to open your saved bills on this browser.' : 'Choose a password to keep Higher Folio behind a local sign-in on this browser.';
+  $('accountNameLabel').hidden = existing;
+  $('accountName').hidden = existing;
+  $('accountConfirmGroup').hidden = existing;
+  $('accountConfirm').required = !existing;
+  $('accountPassword').autocomplete = existing ? 'current-password' : 'new-password';
+  $('accountSubmit').textContent = existing ? 'Unlock Higher Folio' : 'Create private account';
+  $('accountError').hidden = true;
+  $('accountPassword').value = '';
+  $('accountConfirm').value = '';
+}
+function unlockApplication() {
+  sessionStorage.setItem(accountSessionKey, 'true');
+  document.body.classList.remove('account-locked');
+  $('accountDialog').close();
+  setupBusiness(); updatePaymentControls(); render();
+}
+async function initializeAccount() {
+  const account = accountRecord();
+  if (account && sessionStorage.getItem(accountSessionKey) === 'true') { unlockApplication(); return; }
+  configureAccountDialog(account);
+  $('accountDialog').showModal();
+  setTimeout(() => $('accountPassword').focus(), 0);
+}
+async function handleAccountSubmit(event) {
+  event.preventDefault();
+  const password = $('accountPassword').value;
+  const account = accountRecord();
+  const isUnlock = $('accountForm').dataset.mode === 'unlock';
+  if (password.length < 8) { $('accountError').textContent = 'Use at least 8 characters for the password.'; $('accountError').hidden = false; return; }
+  if (!window.argon2) { $('accountError').textContent = 'The local password checker could not load. Please refresh and try again.'; $('accountError').hidden = false; return; }
+  $('accountSubmit').disabled = true;
+  $('accountSubmit').textContent = isUnlock ? 'Unlocking…' : 'Creating private account…';
+  try {
+    if (isUnlock) {
+      await window.argon2.verify({pass: password, encoded: account.encoded});
+      unlockApplication();
+      return;
+    }
+    if (password !== $('accountConfirm').value) throw new Error('Passwords do not match.');
+    const result = await window.argon2.hash({pass: password, salt: randomSalt(), time: 3, mem: 19456, hashLen: 32, parallelism: 1, type: window.argon2.ArgonType.Argon2id});
+    localStorage.setItem(accountKey, JSON.stringify({name: $('accountName').value.trim(), encoded: result.encoded, createdAt: new Date().toISOString(), version: 1}));
+    unlockApplication();
+  } catch (error) {
+    $('accountError').textContent = error.message === 'Passwords do not match.' ? error.message : (isUnlock ? 'That password did not unlock this local account.' : 'The private account could not be created. Please try again.');
+    $('accountError').hidden = false;
+    $('accountPassword').focus();
+  } finally {
+    $('accountSubmit').disabled = false;
+    if ($('accountDialog').open) $('accountSubmit').textContent = isUnlock ? 'Unlock Higher Folio' : 'Create private account';
+  }
+}
+
 document.querySelectorAll('input, select, textarea').forEach(field => field.addEventListener('input', render));
 $('currency').addEventListener('change', render);
 $('documentType').addEventListener('change', render);
@@ -261,6 +401,12 @@ $('newBillButton').addEventListener('click', () => { $('billForm').reset(); $('i
 $('markPaidButton').addEventListener('click', () => { $('paymentStatus').value = 'paid'; updatePaymentControls(); updateSavedInvoice(); render(); saveState('Marked as paid — add the payment method if you want'); });
 document.querySelectorAll('[data-edit-business]').forEach(button => button.addEventListener('click', editBusiness));
 $('expandPreview').addEventListener('click', openPrint);
+$('archiveButton').addEventListener('click', () => { archiveFilter = 'all'; renderArchive(); $('archiveDialog').showModal(); });
+$('closeArchiveButton').addEventListener('click', () => $('archiveDialog').close());
+document.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => { archiveFilter = button.dataset.filter; renderArchive(); }));
+$('archiveList').addEventListener('click', event => { const button = event.target.closest('[data-load-bill]'); if (button) openSavedBill(button.dataset.loadBill); });
+$('accountForm').addEventListener('submit', handleAccountSubmit);
+$('accountDialog').addEventListener('cancel', event => event.preventDefault());
 $('setupQr').addEventListener('change', () => {
   const file = $('setupQr').files[0];
   pendingQrData = null;
@@ -294,4 +440,4 @@ $('saveSetup').addEventListener('click', () => {
   catch { saveState('QR image is too large to save here — please choose a smaller one'); return; }
   applyBusinessProfile(profile); render(); $('setupDialog').close(); saveState('Business and payment details saved privately');
 });
-setupBusiness(); updatePaymentControls(); render();
+initializeAccount();
