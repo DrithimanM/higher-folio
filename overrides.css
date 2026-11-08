@@ -247,3 +247,22 @@ body.account-locked .app-shell { visibility: hidden; }
   .expense-row > div:last-child { text-align: left; }
   .customer-bookkeeping-row .button { width: 100%; }
 }
+
+/* Keep the printable document isolated from phone-only controls and screen layout.
+   This must be last: mobile rules otherwise win in the cascade and create a blank page. */
+@media print {
+  @page { size: A4 portrait; margin: 10mm; }
+
+  html, body { width: 100%; min-height: 0 !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
+  .no-print, .editor, .welcome, .topbar, .pdf-note, .mobile-action-bar, .app-tabs, .bookkeeping-panel { display: none !important; }
+  .app-shell, .workspace, .preview-column { display: block !important; width: auto !important; max-width: none !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; }
+  .invoice { width: 100% !important; max-width: none !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
+  .invoice::before { display: none !important; }
+  .invoice-status { display: none !important; }
+  .invoice-top, .invoice-meta, .invoice-items, .invoice-totals, .invoice-note, .invoice-payment-details, .invoice footer { break-inside: avoid; page-break-inside: avoid; }
+  .invoice-meta { margin-top: 9mm !important; }
+  .invoice-items { padding: 12px 0 !important; }
+  .invoice-note { margin-top: 12px !important; }
+  .invoice-payment-details { margin-top: 12px !important; }
+  .invoice footer { margin-top: 12px !important; }
+}

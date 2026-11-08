@@ -302,7 +302,7 @@ function downloadWordCopy() {
     catch { return ''; }
   }).join('\n');
   const title = `${$('documentType').value} ${invoiceId()}`;
-  const documentHtml = `<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base href="${location.href}"><title>${escapeHtml(title)}</title><style>${styleText} body{padding:28px;background:#fff}.invoice{margin:0 auto;box-shadow:none}</style></head><body>${$('invoice').outerHTML}</body></html>`;
+  const documentHtml = `<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(title)}</title><style>${styleText} body{padding:28px;background:#fff}.invoice{margin:0 auto;box-shadow:none}</style></head><body>${$('invoice').outerHTML}</body></html>`;
   const file = new Blob([documentHtml], {type: 'application/msword'});
   const link = document.createElement('a');
   link.href = URL.createObjectURL(file);
