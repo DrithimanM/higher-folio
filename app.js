@@ -1,14 +1,15 @@
 const $ = (id) => document.getElementById(id);
 const appKey = 'simply-bill-v1';
 const accountKey = 'higherFolioAccount-v1';
-const accountSessionKey = 'higherFolioUnlocked-v1';
 const customerKey = 'higherFolioCustomers-v1';
 const businessesKey = 'higherFolioBusinesses-v1';
 const activeBusinessKey = 'higherFolioActiveBusiness-v1';
 const expensesKey = 'higherFolioExpenses-v1';
 const vendorsKey = 'higherFolioVendors-v1';
+const vaultStorageKey = 'higherFolioVault-v2';
+const vaultDataKeys = [appKey, customerKey, businessesKey, activeBusinessKey, expensesKey, vendorsKey, 'higherFolioNext', 'simplyBillNext', 'simplyBillProfile'];
 let template = 'soft';
-let nextSequence = Number(localStorage.getItem('higherFolioNext') || localStorage.getItem('simplyBillNext') || '1');
+let nextSequence = 1;
 let businessProfile = {};
 let pendingQrData = null;
 let pendingLogoData = null;
@@ -16,6 +17,86 @@ let archiveFilter = 'all';
 let businessProfiles = [];
 let editingBusinessId = null;
 let bookkeepingView = 'overview';
+let vaultKey = null;
+let vaultData = {};
+let vaultRevision = 0;
+let vaultPersistedRevision = 0;
+let vaultPersisting = false;
+
+function bytesToBase64(bytes) {
+  let binary = '';
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+  return btoa(binary);
+}
+function base64ToBytes(value) {
+  const binary = atob(value);
+  return Uint8Array.from(binary, character => character.charCodeAt(0));
+}
+function newVaultSalt() {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return bytesToBase64(bytes);
+}
+async function deriveVaultKey(password, salt) {
+  const material = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({name: 'PBKDF2', salt: base64ToBytes(salt), iterations: 600000, hash: 'SHA-256'}, material, {name: 'AES-GCM', length: 256}, false, ['encrypt', 'decrypt']);
+}
+async function encryptVault(data) {
+  const iv = new Uint8Array(12);
+  crypto.getRandomValues(iv);
+  const encoded = new TextEncoder().encode(JSON.stringify(data));
+  const ciphertext = await crypto.subtle.encrypt({name: 'AES-GCM', iv}, vaultKey, encoded);
+  return JSON.stringify({version: 2, iv: bytesToBase64(iv), ciphertext: bytesToBase64(new Uint8Array(ciphertext))});
+}
+async function decryptVault(payload) {
+  const parsed = JSON.parse(payload);
+  if (parsed.version !== 2 || typeof parsed.iv !== 'string' || typeof parsed.ciphertext !== 'string') throw new Error('Unsupported vault format');
+  const plaintext = await crypto.subtle.decrypt({name: 'AES-GCM', iv: base64ToBytes(parsed.iv)}, vaultKey, base64ToBytes(parsed.ciphertext));
+  const data = JSON.parse(new TextDecoder().decode(plaintext));
+  return data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+}
+async function persistVault() {
+  if (!vaultKey || vaultPersisting) return;
+  vaultPersisting = true;
+  try {
+    while (vaultPersistedRevision < vaultRevision) {
+      const revision = vaultRevision;
+      const encrypted = await encryptVault(vaultData);
+      if (revision !== vaultRevision) continue;
+      localStorage.setItem(vaultStorageKey, encrypted);
+      vaultPersistedRevision = revision;
+    }
+  } finally {
+    vaultPersisting = false;
+  }
+}
+function secureGet(key) { return Object.hasOwn(vaultData, key) ? vaultData[key] : null; }
+function secureSet(key, value) {
+  vaultData[key] = String(value);
+  vaultRevision += 1;
+  void persistVault().catch(() => saveState('Your latest change could not be saved securely on this browser'));
+}
+async function loadVault(password, account) {
+  const vaultSalt = account.vaultSalt || newVaultSalt();
+  vaultKey = await deriveVaultKey(password, vaultSalt);
+  const encryptedVault = localStorage.getItem(vaultStorageKey);
+  if (encryptedVault) {
+    vaultData = await decryptVault(encryptedVault);
+    vaultRevision = 1;
+    vaultPersistedRevision = 1;
+  } else {
+    vaultData = Object.fromEntries(vaultDataKeys.flatMap(key => {
+      const value = localStorage.getItem(key);
+      return value === null ? [] : [[key, value]];
+    }));
+    vaultRevision = 1;
+    vaultPersistedRevision = 0;
+    await persistVault();
+    vaultDataKeys.forEach(key => localStorage.removeItem(key));
+  }
+  if (!account.vaultSalt) localStorage.setItem(accountKey, JSON.stringify({...account, vaultSalt, version: 2}));
+  nextSequence = Number(secureGet('higherFolioNext') || secureGet('simplyBillNext') || '1');
+}
 
 const symbol = (currency) => currency === 'INR' ? '₹ ' : '<img class="dirham-icon" src="assets/uae-dirham-symbol.png" alt="Dirham" />';
 const amount = (number) => `${symbol($('currency').value)}${Number(number || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
@@ -25,7 +106,16 @@ $('issueDate').value = today;
 $('expenseDate').value = today;
 
 const threeDigits = (value) => String(value).padStart(3, '0').slice(-3);
-const randomLead = () => Math.floor(100 + Math.random() * 900);
+function randomToken() {
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  return bytesToBase64(bytes).replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
+}
+const randomLead = () => {
+  const bytes = new Uint16Array(1);
+  crypto.getRandomValues(bytes);
+  return 100 + (bytes[0] % 900);
+};
 function julianDay(dateValue) {
   const date = new Date(`${dateValue || today}T12:00:00`);
   const start = new Date(date.getFullYear(), 0, 0);
@@ -65,9 +155,9 @@ function updatePaymentControls() {
 }
 function updateSavedInvoice() {
   if (!currentInvoice.saved) return;
-  const records = JSON.parse(localStorage.getItem(appKey) || '[]');
+  const records = JSON.parse(secureGet(appKey) || '[]');
   const totals = render();
-  localStorage.setItem(appKey, JSON.stringify(records.map(record => record.number === invoiceId() ? {...record, customer: $('customerName').value.trim(), currency: $('currency').value, total: totals.total, template, documentType: $('documentType').value, paymentStatus: $('paymentStatus').value, paymentVia: $('paymentVia').value, snapshot: billSnapshot()} : record)));
+  secureSet(appKey, JSON.stringify(records.map(record => record.number === invoiceId() ? {...record, customer: $('customerName').value.trim(), currency: $('currency').value, total: totals.total, template, documentType: $('documentType').value, paymentStatus: $('paymentStatus').value, paymentVia: $('paymentVia').value, snapshot: billSnapshot()} : record)));
 }
 
 function makeUpiQr(total) {
@@ -184,14 +274,14 @@ function billSnapshot() {
 function saveBill() {
   if (currentInvoice.saved) { updateSavedInvoice(); saveState('Bill updated — ready to share'); return; }
   const totals = render();
-  const records = JSON.parse(localStorage.getItem(appKey) || '[]');
+  const records = JSON.parse(secureGet(appKey) || '[]');
   currentInvoice.julian = julianDay($('issueDate').value);
   records.unshift({number: invoiceId(), invoice: {...currentInvoice}, createdAt: new Date().toISOString(), customer: $('customerName').value.trim(), currency: $('currency').value, total: totals.total, template, documentType: $('documentType').value, paymentStatus: $('paymentStatus').value, paymentVia: $('paymentVia').value, snapshot: billSnapshot()});
-  localStorage.setItem(appKey, JSON.stringify(records.slice(0, 100)));
+  secureSet(appKey, JSON.stringify(records.slice(0, 100)));
   rememberCurrentCustomer();
   currentInvoice.saved = true;
   nextSequence = currentInvoice.sequence + 1;
-  localStorage.setItem('higherFolioNext', String(nextSequence));
+  secureSet('higherFolioNext', String(nextSequence));
   updatePaymentControls(); render(); saveState('Bill saved — ready to share');
 }
 
@@ -243,23 +333,23 @@ function applyBusinessProfile(profile) {
   $('businessLicense').hidden = !profile.tradeLicense;
   $('businessLicense').textContent = profile.tradeLicense ? `Trade licence no. ${profile.tradeLicense}` : '';
 }
-function businessId() { return `business-${Date.now()}-${Math.random().toString(16).slice(2)}`; }
+function businessId() { return `business-${Date.now()}-${randomToken()}`; }
 function readBusinesses() {
   try {
-    const saved = JSON.parse(localStorage.getItem(businessesKey) || '[]');
+    const saved = JSON.parse(secureGet(businessesKey) || '[]');
     if (Array.isArray(saved) && saved.length) return saved;
-    const legacy = JSON.parse(localStorage.getItem('simplyBillProfile') || 'null');
+    const legacy = JSON.parse(secureGet('simplyBillProfile') || 'null');
     if (legacy) {
       const migrated = [{...legacy, id: businessId()}];
-      localStorage.setItem(businessesKey, JSON.stringify(migrated));
-      localStorage.setItem(activeBusinessKey, migrated[0].id);
+      secureSet(businessesKey, JSON.stringify(migrated));
+      secureSet(activeBusinessKey, migrated[0].id);
       return migrated;
     }
   } catch { return []; }
   return [];
 }
-function saveBusinesses() { localStorage.setItem(businessesKey, JSON.stringify(businessProfiles)); }
-function activeBusiness() { return businessProfiles.find(profile => profile.id === localStorage.getItem(activeBusinessKey)) || businessProfiles[0] || null; }
+function saveBusinesses() { secureSet(businessesKey, JSON.stringify(businessProfiles)); }
+function activeBusiness() { return businessProfiles.find(profile => profile.id === secureGet(activeBusinessKey)) || businessProfiles[0] || null; }
 function renderBusinessPickers() {
   const active = activeBusiness();
   const options = businessProfiles.map(profile => `<option value="${escapeHtml(profile.id)}">${escapeHtml(profile.name || 'Untitled business')}</option>`).join('');
@@ -273,7 +363,7 @@ function renderBusinessPickers() {
 function setActiveBusiness(id) {
   const profile = businessProfiles.find(entry => entry.id === id);
   if (!profile) return;
-  localStorage.setItem(activeBusinessKey, profile.id);
+  secureSet(activeBusinessKey, profile.id);
   editingBusinessId = profile.id;
   applyBusinessProfile(profile); renderBusinessPickers(); render(); renderArchive();
 }
@@ -281,7 +371,7 @@ function fillBusinessEditor(profile = {}) {
   $('setupBusiness').value = profile.name || '';
   $('setupLogo').value = '';
   pendingLogoData = null;
-  $('logoFileName').textContent = profile.logo ? 'A logo is saved on this device. Choose another image to replace it.' : 'Choose a small square logo (up to 750 KB). It stays only on this device.';
+  $('logoFileName').textContent = profile.logo ? 'A logo is saved on this device. Choose another image to replace it.' : 'Choose a small PNG, JPEG, or WebP logo (up to 500 KB). It stays only on this device.';
   $('removeLogoButton').hidden = !profile.logo;
   $('setupContact').value = profile.contact || '';
   $('setupInstagram').value = profile.instagram || '';
@@ -295,7 +385,7 @@ function fillBusinessEditor(profile = {}) {
   $('setupCryptoAddress').value = profile.cryptoAddress || '';
   $('setupQr').value = '';
   pendingQrData = null;
-  $('qrFileName').textContent = profile.upiQr ? 'A QR image is saved on this device. Choose another image to replace it.' : 'Choose a small QR image (up to 750 KB). It stays only on this device.';
+  $('qrFileName').textContent = profile.upiQr ? 'A QR image is saved on this device. Choose another image to replace it.' : 'Choose a PNG, JPEG, or WebP QR image (up to 500 KB). It stays only on this device.';
   $('removeQrButton').hidden = !profile.upiQr;
   $('businessDialogTitle').textContent = profile.id ? `Edit ${profile.name || 'business'}` : 'Add another business';
   $('businessDialogIntro').textContent = profile.id ? 'Update the details that belong only to this business.' : 'Set up separate details for this business. You can switch before making a bill.';
@@ -316,7 +406,7 @@ function editBusiness() {
 }
 
 function savedCustomers() {
-  try { return JSON.parse(localStorage.getItem(customerKey) || '[]'); }
+  try { return JSON.parse(secureGet(customerKey) || '[]'); }
   catch { return []; }
 }
 function renderSavedCustomers(selectedId = '') {
@@ -329,10 +419,10 @@ function saveCustomerDetails(details, selectedId = '') {
   if (!name) return null;
   const customers = savedCustomers();
   const existingIndex = customers.findIndex(customer => customer.id === selectedId || customer.name.toLocaleLowerCase() === name.toLocaleLowerCase());
-  const customer = {name, contact: details.contact.trim(), address: details.address.trim(), id: existingIndex >= 0 ? customers[existingIndex].id : `customer-${Date.now()}-${Math.random().toString(16).slice(2)}`};
+  const customer = {name, contact: details.contact.trim(), address: details.address.trim(), id: existingIndex >= 0 ? customers[existingIndex].id : `customer-${Date.now()}-${randomToken()}`};
   if (existingIndex >= 0) customers[existingIndex] = customer;
   else customers.unshift(customer);
-  try { localStorage.setItem(customerKey, JSON.stringify(customers.slice(0, 100))); }
+  try { secureSet(customerKey, JSON.stringify(customers.slice(0, 100))); }
   catch { return null; }
   renderSavedCustomers(customer.id);
   return customer;
@@ -364,15 +454,15 @@ function selectAppTab(tab) {
 
 function formatArchiveAmount(currency, value) { return currency === 'INR' ? `₹${Number(value || 0).toFixed(2)}` : `AED ${Number(value || 0).toFixed(2)}`; }
 function savedRecords() {
-  try { return JSON.parse(localStorage.getItem(appKey) || '[]'); }
+  try { return JSON.parse(secureGet(appKey) || '[]'); }
   catch { return []; }
 }
 function savedExpenses() {
-  try { return JSON.parse(localStorage.getItem(expensesKey) || '[]'); }
+  try { return JSON.parse(secureGet(expensesKey) || '[]'); }
   catch { return []; }
 }
 function savedVendors() {
-  try { return JSON.parse(localStorage.getItem(vendorsKey) || '[]'); }
+  try { return JSON.parse(secureGet(vendorsKey) || '[]'); }
   catch { return []; }
 }
 function activeExpenses() { return savedExpenses().filter(expense => expense.businessId === businessProfile.id); }
@@ -490,15 +580,14 @@ function configureAccountDialog(existing) {
   $('accountPassword').value = '';
   $('accountConfirm').value = '';
 }
-function unlockApplication() {
-  sessionStorage.setItem(accountSessionKey, 'true');
+async function unlockApplication(password, account) {
+  await loadVault(password, account);
   document.body.classList.remove('account-locked');
   $('accountDialog').close();
   setupBusiness(); renderSavedCustomers(); updatePaymentControls(); render(); renderArchive();
 }
 async function initializeAccount() {
   const account = accountRecord();
-  if (account && sessionStorage.getItem(accountSessionKey) === 'true') { unlockApplication(); return; }
   configureAccountDialog(account);
   $('accountDialog').showModal();
   setTimeout(() => $('accountPassword').focus(), 0);
@@ -515,18 +604,21 @@ async function handleAccountSubmit(event) {
   try {
     if (isUnlock) {
       await window.argon2.verify({pass: password, encoded: account.encoded});
-      unlockApplication();
+      await unlockApplication(password, accountRecord());
       return;
     }
     if (password !== $('accountConfirm').value) throw new Error('Passwords do not match.');
     const result = await window.argon2.hash({pass: password, salt: randomSalt(), time: 3, mem: 19456, hashLen: 32, parallelism: 1, type: window.argon2.ArgonType.Argon2id});
-    localStorage.setItem(accountKey, JSON.stringify({name: $('accountName').value.trim(), encoded: result.encoded, createdAt: new Date().toISOString(), version: 1}));
-    unlockApplication();
+    const createdAccount = {name: $('accountName').value.trim(), encoded: result.encoded, vaultSalt: newVaultSalt(), createdAt: new Date().toISOString(), version: 2};
+    localStorage.setItem(accountKey, JSON.stringify(createdAccount));
+    await unlockApplication(password, createdAccount);
   } catch (error) {
     $('accountError').textContent = error.message === 'Passwords do not match.' ? error.message : (isUnlock ? 'That password did not unlock this local account.' : 'The private account could not be created. Please try again.');
     $('accountError').hidden = false;
     $('accountPassword').focus();
   } finally {
+    $('accountPassword').value = '';
+    $('accountConfirm').value = '';
     $('accountSubmit').disabled = false;
     if ($('accountDialog').open) $('accountSubmit').textContent = isUnlock ? 'Unlock Higher Folio' : 'Create private account';
   }
@@ -594,11 +686,11 @@ $('expenseForm').addEventListener('submit', event => {
   if (!vendor || !(amountValue > 0)) { saveState('Add the business paid to and a payment amount'); (!vendor ? $('expenseVendorName') : $('expenseAmount')).focus(); return; }
   const vendors = savedVendors();
   const existing = vendors.find(entry => entry.businessId === businessProfile.id && entry.name.toLocaleLowerCase() === vendor.toLocaleLowerCase());
-  const vendorId = existing?.id || `vendor-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  const expense = {id: `expense-${Date.now()}-${Math.random().toString(16).slice(2)}`, businessId: businessProfile.id, vendor, vendorId, date: $('expenseDate').value || today, currency: $('expenseCurrency').value, amount: amountValue, method: $('expenseMethod').value, note: $('expenseNote').value.trim(), createdAt: new Date().toISOString()};
+  const vendorId = existing?.id || `vendor-${Date.now()}-${randomToken()}`;
+  const expense = {id: `expense-${Date.now()}-${randomToken()}`, businessId: businessProfile.id, vendor, vendorId, date: $('expenseDate').value || today, currency: $('expenseCurrency').value, amount: amountValue, method: $('expenseMethod').value, note: $('expenseNote').value.trim(), createdAt: new Date().toISOString()};
   try {
-    if (!existing) { vendors.unshift({id: vendorId, businessId: businessProfile.id, name: vendor}); localStorage.setItem(vendorsKey, JSON.stringify(vendors.slice(0, 100))); }
-    const expenses = savedExpenses(); expenses.unshift(expense); localStorage.setItem(expensesKey, JSON.stringify(expenses.slice(0, 500)));
+    if (!existing) { vendors.unshift({id: vendorId, businessId: businessProfile.id, name: vendor}); secureSet(vendorsKey, JSON.stringify(vendors.slice(0, 100))); }
+    const expenses = savedExpenses(); expenses.unshift(expense); secureSet(expensesKey, JSON.stringify(expenses.slice(0, 500)));
   } catch { saveState('This outgoing payment could not be saved on this browser'); return; }
   $('expenseForm').reset(); $('expenseDate').value = today; $('expenseCurrency').value = 'AED'; renderVendors(); renderExpenses(); renderArchive(); saveState('Outgoing payment saved privately');
 });
@@ -606,33 +698,53 @@ $('savedCustomer').addEventListener('change', () => fillCustomer($('savedCustome
 $('saveCustomerButton').addEventListener('click', () => { if (rememberCurrentCustomer()) saveState('Customer details saved for the next bill'); else { saveState('Add the customer name before saving'); $('customerName').focus(); } });
 $('accountForm').addEventListener('submit', handleAccountSubmit);
 $('accountDialog').addEventListener('cancel', event => event.preventDefault());
-$('setupQr').addEventListener('change', () => {
+const acceptedImageTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+function hasValidRasterSignature(bytes, type) {
+  const png = bytes.length >= 8 && [137, 80, 78, 71, 13, 10, 26, 10].every((value, index) => bytes[index] === value);
+  const jpeg = bytes.length >= 3 && bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255;
+  const webp = bytes.length >= 12 && String.fromCharCode(...bytes.slice(0, 4)) === 'RIFF' && String.fromCharCode(...bytes.slice(8, 12)) === 'WEBP';
+  return (type === 'image/png' && png) || (type === 'image/jpeg' && jpeg) || (type === 'image/webp' && webp);
+}
+async function readSafeImage(file) {
+  if (!file || !acceptedImageTypes.has(file.type) || file.size > 500000) return null;
+  const header = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+  if (!hasValidRasterSignature(header, file.type)) return null;
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error('Image could not be read'));
+    reader.readAsDataURL(file);
+  });
+}
+$('setupQr').addEventListener('change', async () => {
   const file = $('setupQr').files[0];
   pendingQrData = null;
   if (!file) return;
-  if (!file.type.startsWith('image/') || file.size > 750000) {
+  try {
+    const imageData = await readSafeImage(file);
+    if ($('setupQr').files[0] !== file) return;
+    if (!imageData) throw new Error('Unsupported image');
+    pendingQrData = imageData;
+    $('qrFileName').textContent = 'QR image ready. It will be saved only on this device.';
+  } catch {
     $('setupQr').value = '';
-    $('qrFileName').textContent = 'Please choose an image under 750 KB.';
-    return;
+    $('qrFileName').textContent = 'Choose a PNG, JPEG, or WebP image under 500 KB.';
   }
-  const reader = new FileReader();
-  reader.onload = () => { pendingQrData = String(reader.result); $('qrFileName').textContent = 'QR image ready. It will be saved only on this device.'; };
-  reader.onerror = () => { $('qrFileName').textContent = 'That image could not be read. Please choose another one.'; };
-  reader.readAsDataURL(file);
 });
-$('setupLogo').addEventListener('change', () => {
+$('setupLogo').addEventListener('change', async () => {
   const file = $('setupLogo').files[0];
   pendingLogoData = null;
   if (!file) return;
-  if (!file.type.startsWith('image/') || file.size > 750000) {
+  try {
+    const imageData = await readSafeImage(file);
+    if ($('setupLogo').files[0] !== file) return;
+    if (!imageData) throw new Error('Unsupported image');
+    pendingLogoData = imageData;
+    $('logoFileName').textContent = 'Logo ready. It will be saved only on this device.';
+  } catch {
     $('setupLogo').value = '';
-    $('logoFileName').textContent = 'Please choose an image under 750 KB.';
-    return;
+    $('logoFileName').textContent = 'Choose a PNG, JPEG, or WebP image under 500 KB.';
   }
-  const reader = new FileReader();
-  reader.onload = () => { pendingLogoData = String(reader.result); $('logoFileName').textContent = 'Logo ready. It will be saved only on this device.'; };
-  reader.onerror = () => { $('logoFileName').textContent = 'That image could not be read. Please choose another one.'; };
-  reader.readAsDataURL(file);
 });
 $('removeLogoButton').addEventListener('click', () => {
   pendingLogoData = '';
@@ -661,7 +773,7 @@ $('saveSetup').addEventListener('click', () => {
     if (index >= 0) businessProfiles[index] = profile;
     else businessProfiles.push(profile);
     saveBusinesses();
-    localStorage.setItem('simplyBillProfile', JSON.stringify(profile));
+    secureSet('simplyBillProfile', JSON.stringify(profile));
   }
   catch { saveState('Logo or QR image is too large to save here — please choose a smaller one'); return; }
   editingBusinessId = profile.id;

@@ -4,10 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f7f4ee" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; connect-src 'none'; font-src 'self'; form-action 'self'; frame-ancestors 'none'; frame-src 'none'; img-src 'self' data: blob:; media-src 'none'; object-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:" />
+    <meta name="referrer" content="no-referrer" />
+    <meta http-equiv="Permissions-Policy" content="camera=(), geolocation=(), microphone=(), payment=(), usb=()" />
     <title>Higher Folio</title>
     <link rel="icon" href="assets/higher-folio-icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="styles.css?v=13f1f7f" />
-    <link rel="stylesheet" href="overrides.css?v=customer-add-1" />
+    <link rel="stylesheet" href="overrides.css?v=security-vault-1" />
   </head>
   <body class="account-locked">
     <main class="app-shell">
@@ -112,6 +115,6 @@
     <template id="itemTemplate"><div class="item-row added-item"><input aria-label="Item description" placeholder="Another service or item" /><input aria-label="Item amount" inputmode="decimal" type="number" min="0" step="0.01" placeholder="0.00" /><button type="button" class="remove-item" aria-label="Remove this item">×</button></div></template>
     <script src="assets/qrcode-generator.js?v=13f1f7f"></script>
     <script src="assets/vendor/argon2-bundled.min.js?v=13f1f7f"></script>
-    <script src="app.js?v=customer-add-1"></script>
+    <script src="app.js?v=security-vault-1"></script>
   </body>
 </html>
