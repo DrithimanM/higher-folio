@@ -258,7 +258,6 @@ body.account-locked .app-shell { visibility: hidden; }
   .app-shell, .workspace, .preview-column { display: block !important; width: auto !important; max-width: none !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; }
   .invoice { width: 100% !important; max-width: none !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
   .invoice::before { display: none !important; }
-  .invoice-status { display: none !important; }
   .invoice-top, .invoice-meta, .invoice-items, .invoice-totals, .invoice-note, .invoice-payment-details, .invoice footer { break-inside: avoid; page-break-inside: avoid; }
   .invoice-meta { margin-top: 9mm !important; }
   .invoice-items { padding: 12px 0 !important; }
