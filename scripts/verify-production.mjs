@@ -24,7 +24,7 @@ if (/\beval\s*\(|new Function\s*\(/u.test(app)) fail('dynamic JavaScript evaluat
 if (app.includes('Math.random')) fail('non-cryptographic identifier generation found');
 if (!printStyles.includes('.mobile-action-bar, .app-tabs, .bookkeeping-panel { display: none !important; }')) fail('mobile controls can leak into printed PDFs');
 if (!printStyles.includes('@page { size: A4 portrait; margin: 10mm; }')) fail('A4 print page constraints are missing');
-if (index.includes('Prepared with Higher Folio')) fail('product branding is still included in invoices');
+if (!index.includes('Prepared with Higher Folio')) fail('invoice product credit is missing');
 if (app.includes('<base href="${location.href}">')) fail('Word copies still include the app URL');
 if (!workflow.includes('node scripts/verify-production.mjs')) fail('Pages deployment does not run the production verification gate');
 if (!workflow.includes('actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683')) fail('checkout action is not pinned to an immutable commit');
